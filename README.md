@@ -22,6 +22,52 @@
   <a href="https://sonarcloud.io/project/overview?id=LizardByte_Sunshine"><img src="https://img.shields.io/sonar/quality_gate/LizardByte_Sunshine.svg?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge&logo=sonarqubecloud&label=sonarcloud" alt="SonarCloud"></a>
 </div>
 
+> [!CAUTION]
+> ### ⚠️ AI-Generated Code Disclaimer
+>
+> **All of the fork-specific code in this repository was written by an AI coding agent (Claude Code), not
+> hand-written by a human.** It has not undergone the same level of review, auditing, or testing as the upstream
+> LizardByte/Sunshine project. Use it at your own risk, review the diffs yourself before relying on it, and do not
+> assume it meets the same quality or security bar as upstream.
+
+## 🍴 About This Fork
+
+This is a personal fork of [LizardByte/Sunshine](https://github.com/LizardByte/Sunshine), maintained at
+[FarisR99/Sunshine](https://github.com/FarisR99/Sunshine). **It will always remain a fork** — it is not trying to
+replace or diverge permanently from upstream — and I will try to keep it reasonably up to date by regularly merging
+in upstream `master`.
+
+For anyone who wants to clone and build this fork instead of upstream, it adds on top of stock Sunshine:
+
+* **Multi-instance support** — run several independent Sunshine instances from a single install via
+  `--config-dir` / `SUNSHINE_CONFIG_DIR`, with generic Windows service install/uninstall scripts, `sunshinesvc`
+  argument forwarding, and tray icons labeled per config directory so you can tell instances apart.
+* **Per-app display output & capture-crop overrides** — configure an app to launch on a specific display output
+  and/or stream only a cropped sub-rectangle of it, with cropped capture support on Windows (RAM/VRAM/WGC capture
+  backends).
+* **Per-app input overrides** — configure an app to use specific keyboard/mouse/controller input behavior.
+* **`contrib/nvidia-surround-toggle`** — a standalone NVAPI-based CLI to create/tear down NVIDIA Surround/Mosaic
+  display configurations remotely (e.g. from a Sunshine "app" command), without touching the NVIDIA Control Panel
+  UI.
+
+### Example use case
+
+I use this fork to play split-screen co-op on a single host PC, streamed to two separate client devices. For
+example, split-screen Stardew Valley across two iPads:
+
+1. The host PC has two 4K 120Hz displays connected (dummy plugs work fine).
+2. On app launch in Sunshine, the `nvidia-surround-toggle` tool enables NVIDIA Surround remotely, combining the two
+   displays into a single 7680x2160 virtual display.
+3. Stardew Valley is launched in split-screen mode across the combined 7680x2160 surface.
+4. Two Sunshine instances run on the host (config-dir per instance), each pointed at the same PC but each with its
+   own app configuration:
+   * Instance 1 → app "P1" with `capture-crop` `0,0,3840,2160` (left half).
+   * Instance 2 → app "P2" with `capture-crop` `3840,0,3840,2160` (right half).
+5. Two instances are needed because a single Sunshine instance only supports one active stream from the host at a
+   time (multiple clients can *view* the same stream, but not each get a different crop of it).
+6. Client 1 connects to instance 1 and sees only their half of the split-screen; client 2 connects to instance 2 and
+   sees only theirs — each on their own iPad, as if it were their own screen.
+
 ## ℹ️ About
 
 Sunshine is a self-hosted game stream host for Moonlight.
