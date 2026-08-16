@@ -303,8 +303,9 @@ namespace platf::dxgi {
 
     // It's possible for our display enumeration to race with mode changes and result in
     // mismatched image pool and desktop texture sizes. If this happens, just reinit again.
-    if (desc.Width != width || desc.Height != height) {
-      BOOST_LOG(info) << "Capture size changed ["sv << width << 'x' << height << " -> "sv << desc.Width << 'x' << desc.Height << ']';
+    // The incoming frame is the full output; compare against the full (uncropped) size.
+    if (desc.Width != full_width || desc.Height != full_height) {
+      BOOST_LOG(info) << "Capture size changed ["sv << full_width << 'x' << full_height << " -> "sv << desc.Width << 'x' << desc.Height << ']';
       return capture_e::reinit;
     }
     // It's also possible for the capture format to change on the fly. If that happens,
@@ -314,8 +315,8 @@ namespace platf::dxgi {
       return capture_e::reinit;
     }
 
-    // Copy from GPU to CPU
-    device_ctx->CopyResource(texture.get(), src.get());
+    // Copy from GPU to CPU (cropping to the capture region if a crop is active)
+    copy_capture_region(texture.get(), src.get());
 
     if (!pull_free_image_cb(img_out)) {
       return capture_e::interrupted;

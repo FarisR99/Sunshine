@@ -21,6 +21,16 @@ sunshine ~/sunshine_config.conf
 The default location of the `apps.json` is the same as the configuration file. You can use a custom
 location by modifying the configuration file.
 
+To relocate the **entire** config directory (config file, `apps.json`, credentials, state, and log)
+in one step, pass `--config-dir <directory>` (or set the `SUNSHINE_CONFIG_DIR` environment variable).
+This lets you run multiple independent instances from a single Sunshine executable — give each one its
+own directory and port.
+
+**Example**
+```bash
+sunshine --config-dir ~/sunshine-instance-2 port=48989
+```
+
 **Default Config Directory**
 
 | OS      | Location                                        |

@@ -4,6 +4,7 @@
  */
 // standard includes
 #include <algorithm>
+#include <charconv>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -49,7 +50,7 @@ using namespace std::literals;
 constexpr auto CA_DIR = "credentials";  ///< Subdirectory under app data that stores Sunshine credentials.
 const std::string PRIVATE_KEY_FILE = std::string(CA_DIR) + "/cakey.pem";  ///< Relative path to the persisted private key PEM file.
 const std::string CERTIFICATE_FILE = std::string(CA_DIR) + "/cacert.pem";  ///< Relative path to the persisted certificate PEM file.
-const std::string APPS_JSON_PATH = platf::appdata().string() + "/apps.json";  ///< Default path to the applications JSON file.
+const std::string APPS_JSON_FILE = "apps.json";  ///< App-data-relative default path to the applications JSON file; resolved against platf::appdata() at load time so --config-dir / SUNSHINE_CONFIG_DIR relocates it.
 
 namespace config {
 
@@ -773,6 +774,7 @@ namespace config {
     {},  // encoder
     {},  // adapter_name
     {},  // output_name
+    {},  // capture_crop
 
     {
       video_t::dd_t::config_option_e::disabled,  // configuration_option
@@ -807,7 +809,7 @@ namespace config {
   stream_t stream {
     10s,  // ping_timeout
 
-    APPS_JSON_PATH,
+    APPS_JSON_FILE,  // file_apps (relative; resolved under appdata by path_f)
 
     20,  // fecPercentage
 
@@ -871,12 +873,12 @@ namespace config {
     {},  // Username
     {},  // Password
     {},  // Password Salt
-    platf::appdata().string() + "/sunshine.conf",  // config file
+    platf::appdata().string() + "/sunshine.conf",  // config file (re-resolved under appdata in parse() when not given on the CLI)
     {},  // cmd args
     47989,  // Base port number
     "ipv4",  // Address family
     {},  // Bind address
-    platf::appdata().string() + "/sunshine.log",  // log file
+    "sunshine.log",  // log file (relative; resolved under appdata by path_f via log_path)
     false,  // notify_pre_releases
     true,  // system_tray
     {},  // prep commands
@@ -1898,6 +1900,7 @@ namespace config {
    */
   int parse(int argc, char *argv[]) {
     std::unordered_map<std::string, std::string> cmd_vars;
+    bool config_file_specified = false;
 #ifdef _WIN32
     bool shortcut_launch = false;
     bool service_admin_launch = false;
@@ -1917,7 +1920,19 @@ namespace config {
         service_admin_launch = true;
       }
 #endif
-      else if (*line == '-') {
+      // Redirect the per-instance app-data (config/apps/creds/state/log) directory so multiple
+      // Sunshine instances can run from a single executable, each with its own config and port.
+      // Must be handled before the generic "--<subcommand>" branch below (which terminates parsing)
+      // and set immediately, so it applies before appdata() is used further down in parse().
+      else if (std::string_view {line}.starts_with("--config-dir="sv)) {
+        platf::set_appdata_dir(std::string {line + "--config-dir="sv.size()});
+      } else if (line == "--config-dir"sv) {
+        if (x + 1 >= argc) {
+          logging::print_help(*argv);
+          return -1;
+        }
+        platf::set_appdata_dir(std::string {argv[++x]});
+      } else if (*line == '-') {
         if (*(line + 1) == '-') {
           sunshine.cmd.name = line + 2;
           sunshine.cmd.argc = argc - x - 1;
@@ -1935,6 +1950,7 @@ namespace config {
         auto pos = std::find(line, line_end, '=');
         if (pos == line_end) {
           sunshine.config_file = line;
+          config_file_specified = true;
         } else {
           TUPLE_EL(var, 1, parse_option(line, line_end));
           if (!var) {
@@ -1952,6 +1968,13 @@ namespace config {
           cmd_vars.emplace(std::move(*var));
         }
       }
+    }
+
+    // If no config file was given explicitly on the command line, resolve its default location
+    // under the (possibly overridden via --config-dir / SUNSHINE_CONFIG_DIR) app-data directory,
+    // so a redirected instance reads its own sunshine.conf rather than the default one.
+    if (!config_file_specified) {
+      sunshine.config_file = platf::appdata().string() + "/sunshine.conf";
     }
 
     bool config_loaded = false;
@@ -2041,5 +2064,135 @@ namespace config {
 #endif
 
     return 0;
+  }
+
+  std::optional<capture_crop_t> parse_capture_crop(const std::string &value) {
+    // Trim surrounding whitespace; an empty/whitespace-only string means "no crop".
+    auto begin = value.find_first_not_of(" \t\r\n");
+    if (begin == std::string::npos) {
+      return std::nullopt;
+    }
+    auto end = value.find_last_not_of(" \t\r\n");
+    std::string_view trimmed(value.data() + begin, end - begin + 1);
+
+    // Expect exactly four comma-separated non-negative integers: x,y,width,height.
+    int parts[4];
+    size_t field = 0;
+    size_t pos = 0;
+    while (true) {
+      // A fifth field means the string is malformed.
+      if (field >= 4) {
+        return std::nullopt;
+      }
+
+      auto comma = trimmed.find(',', pos);
+      auto token = trimmed.substr(pos, comma == std::string_view::npos ? std::string_view::npos : comma - pos);
+
+      int parsed = 0;
+      auto [ptr, ec] = std::from_chars(token.data(), token.data() + token.size(), parsed);
+      if (ec != std::errc {} || ptr != token.data() + token.size() || parsed < 0) {
+        return std::nullopt;
+      }
+      parts[field++] = parsed;
+
+      if (comma == std::string_view::npos) {
+        break;
+      }
+      pos = comma + 1;
+    }
+
+    // Require exactly four fields, and a positive area (a zero/degenerate rectangle is meaningless).
+    if (field != 4 || parts[2] <= 0 || parts[3] <= 0) {
+      return std::nullopt;
+    }
+
+    return capture_crop_t {parts[0], parts[1], parts[2], parts[3]};
+  }
+
+  namespace {
+    std::optional<std::string> saved_output_name;  ///< `video.output_name` prior to the active per-app override, if any.
+    std::optional<std::string> saved_capture_crop;  ///< `video.capture_crop` prior to the active per-app override, if any.
+    bool app_display_override_active {false};  ///< Whether an override is currently applied.
+  }  // namespace
+
+  void apply_app_display_override(const std::optional<std::string> &output_name, const std::optional<std::string> &capture_crop) {
+    if (!output_name && !capture_crop) {
+      return;
+    }
+
+    // An override may already be active for this app (e.g. a client resuming a session that
+    // never reverted the display config on disconnect). Only snapshot the pre-override values
+    // once, otherwise we'd save the already-overridden values as the "original" state.
+    if (!app_display_override_active) {
+      saved_output_name = video.output_name;
+      saved_capture_crop = video.capture_crop;
+      app_display_override_active = true;
+    }
+
+    if (output_name) {
+      video.output_name = *output_name;
+    }
+
+    if (capture_crop) {
+      video.capture_crop = *capture_crop;
+    }
+  }
+
+  void clear_app_display_override() {
+    if (!app_display_override_active) {
+      return;
+    }
+
+    video.output_name = std::move(*saved_output_name);
+    video.capture_crop = std::move(*saved_capture_crop);
+
+    saved_output_name.reset();
+    saved_capture_crop.reset();
+    app_display_override_active = false;
+  }
+
+  namespace {
+    bool saved_input_keyboard {true};  ///< `input.keyboard` prior to the active per-app override.
+    bool saved_input_mouse {true};  ///< `input.mouse` prior to the active per-app override.
+    bool saved_input_controller {true};  ///< `input.controller` prior to the active per-app override.
+    bool app_input_override_active {false};  ///< Whether an input override is currently applied.
+  }  // namespace
+
+  void apply_app_input_override(const std::optional<bool> &keyboard, const std::optional<bool> &mouse, const std::optional<bool> &controller) {
+    if (!keyboard && !mouse && !controller) {
+      return;
+    }
+
+    // Snapshot the pre-override values only once, so a resumed session that re-applies the override
+    // doesn't overwrite the saved "original" values with already-overridden ones.
+    if (!app_input_override_active) {
+      saved_input_keyboard = input.keyboard;
+      saved_input_mouse = input.mouse;
+      saved_input_controller = input.controller;
+      app_input_override_active = true;
+    }
+
+    if (keyboard) {
+      input.keyboard = *keyboard;
+    }
+
+    if (mouse) {
+      input.mouse = *mouse;
+    }
+
+    if (controller) {
+      input.controller = *controller;
+    }
+  }
+
+  void clear_app_input_override() {
+    if (!app_input_override_active) {
+      return;
+    }
+
+    input.keyboard = saved_input_keyboard;
+    input.mouse = saved_input_mouse;
+    input.controller = saved_input_controller;
+    app_input_override_active = false;
   }
 }  // namespace config

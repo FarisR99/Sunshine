@@ -42,6 +42,26 @@ namespace config {
   void log_config_settings(const std::unordered_map<std::string, std::string> &vars, bool save);
 
   /**
+   * @brief A parsed capture-crop sub-rectangle, in physical pixels relative to the selected
+   * output's top-left corner.
+   */
+  struct capture_crop_t {
+    int x;  ///< Horizontal offset from the output's left edge, in pixels.
+    int y;  ///< Vertical offset from the output's top edge, in pixels.
+    int width;  ///< Width of the sub-rectangle, in pixels.
+    int height;  ///< Height of the sub-rectangle, in pixels.
+  };
+
+  /**
+   * @brief Parse a `"x,y,width,height"` capture-crop string into a `capture_crop_t`.
+   *
+   * @param value The crop string to parse. Empty or whitespace-only input yields no crop.
+   * @return The parsed rectangle, or `std::nullopt` when the input is empty or malformed (not
+   * four comma-separated non-negative integers with a positive width and height).
+   */
+  std::optional<capture_crop_t> parse_capture_crop(const std::string &value);
+
+  /**
    * @brief Video encoder, capture, and color settings loaded from configuration.
    */
   struct video_t {
@@ -121,6 +141,14 @@ namespace config {
     std::string encoder;  ///< Encoder backend name selected by configuration.
     std::string adapter_name;  ///< Display adapter name selected in configuration.
     std::string output_name;  ///< Display output name selected in configuration.
+
+    /**
+     * @brief Sub-rectangle of the selected output to capture, as `"x,y,width,height"` in pixels
+     * relative to that output's top-left corner. Empty means capture the full output. Parsed by
+     * `parse_capture_crop()` and consumed by the Windows D3D11 capture backends (see
+     * `display_base_t::init`); currently supported only on unrotated displays.
+     */
+    std::string capture_crop;
 
     /**
      * @brief Display-device integration settings.
@@ -398,4 +426,36 @@ namespace config {
    * @return Parsed configuration key-value entries.
    */
   std::unordered_map<std::string, std::string> parse_config(const std::string_view &file_content);
+
+  /**
+   * @brief Apply a per-app override on top of the global `video` config, saving the prior values
+   * so `clear_app_display_override()` can restore them. A no-op when both arguments are empty.
+   *
+   * @param output_name Per-app override for `video.output_name`, or empty to leave it unchanged.
+   * @param capture_crop Per-app override for `video.capture_crop`, or empty to leave it unchanged.
+   */
+  void apply_app_display_override(const std::optional<std::string> &output_name, const std::optional<std::string> &capture_crop);
+
+  /**
+   * @brief Restore `video.output_name`/`video.capture_crop` to the values saved by the most recent
+   * `apply_app_display_override()` call. A no-op if no override is currently applied.
+   */
+  void clear_app_display_override();
+
+  /**
+   * @brief Apply a per-app override on top of the global `input` config, saving the prior values so
+   * `clear_app_input_override()` can restore them. Each argument is tri-state: an empty optional
+   * leaves that input flag unchanged (inherit the instance default). A no-op when all are empty.
+   *
+   * @param keyboard Per-app override for `input.keyboard`, or empty to leave it unchanged.
+   * @param mouse Per-app override for `input.mouse`, or empty to leave it unchanged.
+   * @param controller Per-app override for `input.controller`, or empty to leave it unchanged.
+   */
+  void apply_app_input_override(const std::optional<bool> &keyboard, const std::optional<bool> &mouse, const std::optional<bool> &controller);
+
+  /**
+   * @brief Restore `input.keyboard`/`input.mouse`/`input.controller` to the values saved by the most
+   * recent `apply_app_input_override()` call. A no-op if no override is currently applied.
+   */
+  void clear_app_input_override();
 }  // namespace config

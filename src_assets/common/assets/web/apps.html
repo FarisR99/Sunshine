@@ -303,6 +303,48 @@
                      v-model="editForm['exit-timeout']" min="0" placeholder="5" />
               <div id="exitTimeoutHelp" class="form-text">{{ $t('apps.exit_timeout_desc') }}</div>
             </div>
+            <!-- display output override -->
+            <div class="mb-3">
+              <label for="appDisplayOutputName" class="form-label">{{ $t('apps.display_output_name') }}</label>
+              <input type="text" class="form-control monospace" id="appDisplayOutputName" aria-describedby="appDisplayOutputNameHelp"
+                     v-model="editForm['display-output-name']" />
+              <div id="appDisplayOutputNameHelp" class="form-text">{{ $t('apps.display_output_name_desc') }}</div>
+            </div>
+            <!-- capture crop rect -->
+            <div class="mb-3">
+              <label for="appDisplayCaptureCrop" class="form-label">{{ $t('apps.display_capture_crop') }}</label>
+              <input type="text" class="form-control monospace" id="appDisplayCaptureCrop" aria-describedby="appDisplayCaptureCropHelp"
+                     v-model="editForm['display-capture-crop']" placeholder="x,y,width,height" />
+              <div id="appDisplayCaptureCropHelp" class="form-text">{{ $t('apps.display_capture_crop_desc') }}</div>
+            </div>
+            <!-- per-app input overrides (tri-state: Inherit = use the instance's global setting) -->
+            <div class="mb-3">
+              <label for="appInputKeyboard" class="form-label">{{ $t('apps.input_keyboard') }}</label>
+              <select id="appInputKeyboard" class="form-select" aria-describedby="appInputKeyboardHelp" v-model="editForm['keyboard']">
+                <option :value="undefined">{{ $t('apps.input_inherit') }}</option>
+                <option :value="true">{{ $t('apps.input_enabled') }}</option>
+                <option :value="false">{{ $t('apps.input_disabled') }}</option>
+              </select>
+              <div id="appInputKeyboardHelp" class="form-text">{{ $t('apps.input_keyboard_desc') }}</div>
+            </div>
+            <div class="mb-3">
+              <label for="appInputMouse" class="form-label">{{ $t('apps.input_mouse') }}</label>
+              <select id="appInputMouse" class="form-select" aria-describedby="appInputMouseHelp" v-model="editForm['mouse']">
+                <option :value="undefined">{{ $t('apps.input_inherit') }}</option>
+                <option :value="true">{{ $t('apps.input_enabled') }}</option>
+                <option :value="false">{{ $t('apps.input_disabled') }}</option>
+              </select>
+              <div id="appInputMouseHelp" class="form-text">{{ $t('apps.input_mouse_desc') }}</div>
+            </div>
+            <div class="mb-3">
+              <label for="appInputController" class="form-label">{{ $t('apps.input_controller') }}</label>
+              <select id="appInputController" class="form-select" aria-describedby="appInputControllerHelp" v-model="editForm['controller']">
+                <option :value="undefined">{{ $t('apps.input_inherit') }}</option>
+                <option :value="true">{{ $t('apps.input_enabled') }}</option>
+                <option :value="false">{{ $t('apps.input_disabled') }}</option>
+              </select>
+              <div id="appInputControllerHelp" class="form-text">{{ $t('apps.input_controller_desc') }}</div>
+            </div>
             <div class="mb-3">
               <label for="appImagePath" class="form-label">{{ $t('apps.image') }}</label>
               <div class="input-group">
@@ -739,7 +781,9 @@
           "exit-timeout": 5,
           "prep-cmd": [],
           detached: [],
-          "image-path": ""
+          "image-path": "",
+          "display-output-name": "",
+          "display-capture-crop": ""
         };
         this.openEditModal();
       },

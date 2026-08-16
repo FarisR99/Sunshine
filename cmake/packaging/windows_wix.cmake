@@ -26,9 +26,13 @@ execute_process(
         RESULT_VARIABLE WIX_INSTALL_RESULT
 )
 
+# A WiX tooling failure (e.g. the pinned version is unavailable in the NuGet feed, or the build
+# host is offline) must not abort configuration -- Sunshine ships via NSIS on Windows, and WiX is
+# optional. Skip WiX packaging in that case, matching the "dotnet not found" path above.
 if(NOT WIX_INSTALL_RESULT EQUAL 0)
-    message(FATAL_ERROR "Failed to install WiX tools locally.
-     WiX packaging may not work correctly, error: ${WIX_INSTALL_OUTPUT}")
+    message(WARNING "Failed to install WiX tools locally; skipping WiX packaging.
+     error: ${WIX_INSTALL_OUTPUT}")
+    return()
 endif()
 
 # Install WiX UI Extension
@@ -40,7 +44,8 @@ execute_process(
 )
 
 if(NOT WIX_UI_INSTALL_RESULT EQUAL 0)
-    message(FATAL_ERROR "Failed to install WiX UI extension, error: ${WIX_UI_INSTALL_OUTPUT}")
+    message(WARNING "Failed to install WiX UI extension; skipping WiX packaging. error: ${WIX_UI_INSTALL_OUTPUT}")
+    return()
 endif()
 
 # Install WiX Util Extension
@@ -52,7 +57,8 @@ execute_process(
 )
 
 if(NOT WIX_UTIL_INSTALL_RESULT EQUAL 0)
-    message(FATAL_ERROR "Failed to install WiX Util extension, error: ${WIX_UTIL_INSTALL_OUTPUT}")
+    message(WARNING "Failed to install WiX Util extension; skipping WiX packaging. error: ${WIX_UTIL_INSTALL_OUTPUT}")
+    return()
 endif()
 
 # Set WiX-specific variables

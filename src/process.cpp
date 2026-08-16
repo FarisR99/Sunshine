@@ -166,6 +166,13 @@ namespace proc {
     _app_prep_begin = std::begin(_app.prep_cmds);
     _app_prep_it = _app_prep_begin;
 
+    // Apply this app's per-app display/capture override here, AFTER the clean-slate terminate()
+    // above (which clears any previous override). nvhttp's launch() also applies it before
+    // configure_display()/probe_encoders(), but that terminate() wipes it; re-applying now ensures
+    // the override is still active when the streaming capture initializes after this returns.
+    config::apply_app_display_override(_app.display_output_name, _app.display_capture_crop);
+    config::apply_app_input_override(_app.input_keyboard, _app.input_mouse, _app.input_controller);
+
     // Add Stream-specific environment variables
     _env["SUNSHINE_APP_ID"] = std::to_string(_app_id);
     _env["SUNSHINE_APP_NAME"] = _app.name;
@@ -362,6 +369,9 @@ namespace proc {
 
       display_device::revert_configuration();
     }
+
+    config::clear_app_display_override();
+    config::clear_app_input_override();
 
     _app_id = -1;
   }
@@ -690,6 +700,11 @@ namespace proc {
         auto cmd = app_node.get_optional<std::string>("cmd"s);
         auto image_path = app_node.get_optional<std::string>("image-path"s);
         auto working_dir = app_node.get_optional<std::string>("working-dir"s);
+        auto display_output_name = app_node.get_optional<std::string>("display-output-name"s);
+        auto display_capture_crop = app_node.get_optional<std::string>("display-capture-crop"s);
+        auto input_keyboard = app_node.get_optional<bool>("keyboard"s);
+        auto input_mouse = app_node.get_optional<bool>("mouse"s);
+        auto input_controller = app_node.get_optional<bool>("controller"s);
         auto elevated = app_node.get_optional<bool>("elevated"s);
         auto auto_detach = app_node.get_optional<bool>("auto-detach"s);
         auto wait_all = app_node.get_optional<bool>("wait-all"s);
@@ -757,6 +772,26 @@ namespace proc {
 
         if (image_path) {
           ctx.image_path = parse_env_val(this_env, *image_path);
+        }
+
+        if (display_output_name) {
+          ctx.display_output_name = parse_env_val(this_env, *display_output_name);
+        }
+
+        if (display_capture_crop) {
+          ctx.display_capture_crop = parse_env_val(this_env, *display_capture_crop);
+        }
+
+        if (input_keyboard) {
+          ctx.input_keyboard = *input_keyboard;
+        }
+
+        if (input_mouse) {
+          ctx.input_mouse = *input_mouse;
+        }
+
+        if (input_controller) {
+          ctx.input_controller = *input_controller;
         }
 
         ctx.elevated = elevated.value_or(false);
