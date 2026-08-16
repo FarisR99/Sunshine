@@ -246,8 +246,10 @@ namespace platf::dxgi {
     }
 
     if (frame_info.LastMouseUpdateTime.QuadPart) {
-      cursor.x = frame_info.PointerPosition.Position.x;
-      cursor.y = frame_info.PointerPosition.Position.y;
+      // Cursor position is in full-output coordinates; shift it into the cropped region (offsets
+      // are zero when no crop is active). blend_cursor clips negative/overflowing positions.
+      cursor.x = frame_info.PointerPosition.Position.x - crop_offset_x;
+      cursor.y = frame_info.PointerPosition.Position.y - crop_offset_y;
       cursor.visible = frame_info.PointerPosition.Visible;
     }
 
@@ -289,8 +291,9 @@ namespace platf::dxgi {
 
         // It's possible for our display enumeration to race with mode changes and result in
         // mismatched image pool and desktop texture sizes. If this happens, just reinit again.
-        if (desc.Width != width || desc.Height != height) {
-          BOOST_LOG(info) << "Capture size changed ["sv << width << 'x' << height << " -> "sv << desc.Width << 'x' << desc.Height << ']';
+        // The incoming frame is the full output; compare against the full (uncropped) size.
+        if (desc.Width != full_width || desc.Height != full_height) {
+          BOOST_LOG(info) << "Capture size changed ["sv << full_width << 'x' << full_height << " -> "sv << desc.Width << 'x' << desc.Height << ']';
           return capture_e::reinit;
         }
 
@@ -301,8 +304,8 @@ namespace platf::dxgi {
           return capture_e::reinit;
         }
 
-        // Copy from GPU to CPU
-        device_ctx->CopyResource(texture.get(), src.get());
+        // Copy from GPU to CPU (cropping to the capture region if a crop is active)
+        copy_capture_region(texture.get(), src.get());
       }
     }
 

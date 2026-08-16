@@ -186,6 +186,29 @@ namespace system_tray {
   #endif
 
   /**
+   * @brief Tray tooltip / label for this instance.
+   *
+   * Secondary instances (those launched with --config-dir or SUNSHINE_CONFIG_DIR) append their
+   * config-dir name so multiple concurrent instances are distinguishable in the system tray. The
+   * primary instance keeps the plain project name.
+   *
+   * @return A stable, process-lifetime C string suitable for tray.tooltip / app display name.
+   */
+  const char *instance_label() {
+    static const std::string label = []() -> std::string {
+      if (platf::appdata_override().empty()) {
+        return PROJECT_NAME;
+      }
+      const auto leaf = platf::appdata().filename().string();
+      if (leaf.empty()) {
+        return PROJECT_NAME;
+      }
+      return std::string(PROJECT_NAME) + " (" + leaf + ")";
+    }();
+    return label.c_str();
+  }
+
+  /**
    * @brief Get resource path.
    *
    * @param relativePath Relative path.
@@ -318,7 +341,9 @@ namespace system_tray {
 
     tray_set_log_callback(qt_log_to_boost);
 
-    tray_set_app_info(PROJECT_NAME, PROJECT_NAME, PROJECT_FQDN);
+    // Label this instance in the tray so multiple concurrent instances are distinguishable.
+    tray.tooltip = instance_label();
+    tray_set_app_info(PROJECT_NAME, instance_label(), PROJECT_FQDN);
 
     if (tray_init(&tray) < 0) {
       BOOST_LOG(warning) << "Failed to create system tray"sv;
@@ -407,7 +432,7 @@ namespace system_tray {
     tray.notification_icon = TRAY_ICON;
     tray.notification_title = "Application Stopped";
     tray.notification_text = msg.c_str();
-    tray.tooltip = PROJECT_NAME;
+    tray.tooltip = instance_label();
     tray_update(&tray);
   }
 
@@ -426,7 +451,7 @@ namespace system_tray {
     tray.notification_title = "Incoming Pairing Request";
     tray.notification_text = "Click here to complete the pairing process";
     tray.notification_icon = TRAY_ICON_LOCKED;
-    tray.tooltip = PROJECT_NAME;
+    tray.tooltip = instance_label();
     tray.notification_cb = []() {
       launch_ui("/pin");
     };

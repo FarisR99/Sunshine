@@ -6,6 +6,7 @@
 
 // standard includes
 #include <bitset>
+#include <cstdlib>
 #include <filesystem>
 #include <functional>
 #include <mutex>
@@ -848,6 +849,34 @@ namespace platf {
    * @brief Owning pointer for a platform input backend.
    */
   using input_t = util::safe_ptr<void, freeInput>;
+
+  /**
+   * @brief Access the process-wide override for the app-data (config/state) directory.
+   * @details Empty means "use the platform default". When non-empty, appdata() returns this path
+   *          instead, letting multiple Sunshine instances share one executable while each uses its
+   *          own config/apps.json/credentials/state/log directory. The slot is seeded once from the
+   *          `SUNSHINE_CONFIG_DIR` environment variable on first access, and may be overwritten via
+   *          set_appdata_dir() (e.g. from the `--config-dir` CLI flag). Defined inline so a single
+   *          instance is shared across all translation units.
+   * @return Reference to the mutable override slot.
+   */
+  inline std::filesystem::path &appdata_override() {
+    static std::filesystem::path override_path = []() -> std::filesystem::path {
+      if (const char *env = std::getenv("SUNSHINE_CONFIG_DIR"); env && *env) {
+        return std::filesystem::path {env};
+      }
+      return {};
+    }();
+    return override_path;
+  }
+
+  /**
+   * @brief Set the app-data directory override consulted by appdata().
+   * @param dir Directory that should hold this instance's config/state, or empty to reset to default.
+   */
+  inline void set_appdata_dir(const std::filesystem::path &dir) {
+    appdata_override() = dir;
+  }
 
   std::filesystem::path appdata();
 

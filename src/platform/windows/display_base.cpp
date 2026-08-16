@@ -447,6 +447,21 @@ namespace platf::dxgi {
     }
   }
 
+  void display_base_t::copy_capture_region(ID3D11Texture2D *dst, ID3D11Texture2D *src) {
+    if (cropped) {
+      D3D11_BOX box {};
+      box.left = static_cast<UINT>(crop_offset_x);
+      box.top = static_cast<UINT>(crop_offset_y);
+      box.front = 0;
+      box.right = static_cast<UINT>(crop_offset_x + width);
+      box.bottom = static_cast<UINT>(crop_offset_y + height);
+      box.back = 1;
+      device_ctx->CopySubresourceRegion(dst, 0, 0, 0, 0, src, 0, &box);
+    } else {
+      device_ctx->CopyResource(dst, src);
+    }
+  }
+
   int display_base_t::init(const ::video::config_t &config, const std::string &display_name) {
     std::once_flag windows_cpp_once_flag;
 
@@ -557,6 +572,35 @@ namespace platf::dxgi {
     if (!output) {
       BOOST_LOG(error) << "Failed to locate an output device"sv;
       return -1;
+    }
+
+    // Record the full output size, then apply a per-app capture crop if one is configured.
+    // Cropping streams only a sub-rectangle of the selected output (e.g. one half of an NVIDIA
+    // Surround span). Only unrotated displays are supported; rotation + crop is an untested
+    // combination, so a crop on a rotated display is ignored and the full output is captured.
+    full_width = width;
+    full_height = height;
+    if (auto crop = config::parse_capture_crop(config::video.capture_crop)) {
+      if (display_rotation != DXGI_MODE_ROTATION_UNSPECIFIED && display_rotation != DXGI_MODE_ROTATION_IDENTITY) {
+        BOOST_LOG(warning) << "Ignoring capture crop: cropping is not supported on rotated displays"sv;
+      } else if (crop->x + crop->width > width || crop->y + crop->height > height) {
+        BOOST_LOG(warning) << "Ignoring capture crop ["sv << crop->x << ',' << crop->y << ',' << crop->width << ',' << crop->height
+                           << "]: rectangle exceeds the "sv << width << 'x' << height << " output bounds"sv;
+      } else {
+        cropped = true;
+        crop_offset_x = crop->x;
+        crop_offset_y = crop->y;
+        width = crop->width;
+        height = crop->height;
+        // NB: width_before_rotation/height_before_rotation intentionally keep the full output size.
+        // The DXGI capture backends validate the incoming full frame against them, and the vram
+        // surface/texture allocations select the cropped size explicitly via the `cropped` flag.
+        // Absolute mouse coordinates are relative to the streamed (cropped) region's top-left.
+        offset_x += crop_offset_x;
+        offset_y += crop_offset_y;
+        BOOST_LOG(info) << "Capture crop active: streaming ["sv << width << 'x' << height << "] at offset ["sv
+                        << crop_offset_x << ',' << crop_offset_y << "] within the "sv << full_width << 'x' << full_height << " output"sv;
+      }
     }
 
     D3D_FEATURE_LEVEL featureLevels[] {

@@ -77,6 +77,30 @@ namespace proc {
     std::string output;  ///< Captured output from the launched process.
     std::string image_path;  ///< Image path.
     std::string id;  ///< Stable identifier for the configured application.
+
+    /**
+     * @brief Per-app override for `config::video.output_name`, applied for the duration of this
+     * app's session and reverted on app exit. Empty when the app should use the globally
+     * configured display output.
+     */
+    std::optional<std::string> display_output_name;
+
+    /**
+     * @brief Per-app override for `config::video.capture_crop`, a `"x,y,width,height"` sub-rectangle
+     * (in pixels, relative to the selected output's top-left corner) to capture instead of the
+     * full output. Empty when the app should capture the full output.
+     */
+    std::optional<std::string> display_capture_crop;
+
+    /**
+     * @brief Per-app overrides for `config::input.keyboard`/`mouse`/`controller`, applied for the
+     * duration of this app's session and reverted on app exit. Each is tri-state: unset means
+     * inherit the instance-global input setting; a value forces that input on/off for this app.
+     */
+    std::optional<bool> input_keyboard;  ///< Per-app override for keyboard input from clients.
+    std::optional<bool> input_mouse;  ///< Per-app override for mouse input from clients.
+    std::optional<bool> input_controller;  ///< Per-app override for controller input from clients.
+
     bool elevated;  ///< Whether the process should be launched elevated.
     bool auto_detach;  ///< Whether the process should detach automatically.
     bool wait_all;  ///< Whether Sunshine waits for all child processes.

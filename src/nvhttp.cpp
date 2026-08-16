@@ -6,6 +6,7 @@
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS
 
 // standard includes
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <string>
@@ -1006,6 +1007,8 @@ namespace nvhttp {
 
       if (revert_display_configuration) {
         display_device::revert_configuration();
+        config::clear_app_display_override();
+        config::clear_app_input_override();
       }
     });
 
@@ -1040,6 +1043,18 @@ namespace nvhttp {
     if (rtsp_stream::session_count() == 0) {
       // The display should be restored in case something fails as there are no other sessions.
       revert_display_configuration = true;
+
+      // Apply any per-app display/capture override before configuring the display or probing
+      // encoders, since both of those read the global video config that this may temporarily
+      // overwrite.
+      auto &apps = proc::proc.get_apps();
+      auto app_iter = std::find_if(apps.begin(), apps.end(), [&appid](const auto &app) {
+        return app.id == std::to_string((int) appid);
+      });
+      if (app_iter != apps.end()) {
+        config::apply_app_display_override(app_iter->display_output_name, app_iter->display_capture_crop);
+        config::apply_app_input_override(app_iter->input_keyboard, app_iter->input_mouse, app_iter->input_controller);
+      }
 
       // We want to prepare display only if there are no active sessions at
       // the moment. This should be done before probing encoders as it could
@@ -1153,6 +1168,18 @@ namespace nvhttp {
     const auto launch_session = make_launch_session(host_audio, args);
 
     if (no_active_sessions) {
+      // Apply any per-app display/capture override before configuring the display or probing
+      // encoders, since both of those read the global video config that this may temporarily
+      // overwrite.
+      auto &apps = proc::proc.get_apps();
+      auto app_iter = std::find_if(apps.begin(), apps.end(), [&current_appid](const auto &app) {
+        return app.id == std::to_string(current_appid);
+      });
+      if (app_iter != apps.end()) {
+        config::apply_app_display_override(app_iter->display_output_name, app_iter->display_capture_crop);
+        config::apply_app_input_override(app_iter->input_keyboard, app_iter->input_mouse, app_iter->input_controller);
+      }
+
       // We want to prepare display only if there are no active sessions at
       // the moment. This should be done before probing encoders as it could
       // change the active displays.
@@ -1226,6 +1253,8 @@ namespace nvhttp {
 
     // The config needs to be reverted regardless of whether "proc::proc.terminate()" was called or not.
     display_device::revert_configuration();
+    config::clear_app_display_override();
+    config::clear_app_input_override();
   }
 
   /**

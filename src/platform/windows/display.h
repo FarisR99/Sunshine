@@ -322,6 +322,27 @@ namespace platf::dxgi {
     int width_before_rotation;  ///< Width before rotation.
     int height_before_rotation;  ///< Height before rotation.
 
+    // Per-app capture crop. When `cropped` is true, `width`/`height` hold the cropped (streamed)
+    // size while `full_width`/`full_height` hold the full output size that the capture backend
+    // actually receives from DXGI/WGC; `crop_offset_x/y` locate the crop within the full output.
+    // When `cropped` is false these mirror `width`/`height` and offsets are zero, so every
+    // capture path behaves exactly as before.
+    bool cropped {false};  ///< Whether a per-app capture crop is active.
+    int full_width {0};  ///< Full (uncropped) output width received from the capture backend.
+    int full_height {0};  ///< Full (uncropped) output height received from the capture backend.
+    int crop_offset_x {0};  ///< X offset of the crop within the full output, in pixels.
+    int crop_offset_y {0};  ///< Y offset of the crop within the full output, in pixels.
+
+    /**
+     * @brief Copy the active capture region from a full-size source frame into a capture-size
+     * destination texture. When a crop is active this copies only the crop sub-rectangle via
+     * `CopySubresourceRegion`; otherwise it is a whole-resource `CopyResource`.
+     *
+     * @param dst Destination texture, sized to the (possibly cropped) capture dimensions.
+     * @param src Full-size source frame from the capture backend.
+     */
+    void copy_capture_region(ID3D11Texture2D *dst, ID3D11Texture2D *src);
+
     int client_frame_rate;  ///< Client frame rate.
     DXGI_RATIONAL client_frame_rate_strict;  ///< Client frame rate strict.
 

@@ -145,6 +145,10 @@ namespace platf {
   decltype(WlanSetInterface) *fn_WlanSetInterface = nullptr;  ///< Fn wlan set interface.
 
   std::filesystem::path appdata() {
+    if (auto &override_path = appdata_override(); !override_path.empty()) {
+      return override_path;
+    }
+
     WCHAR sunshine_path[MAX_PATH];
     GetModuleFileNameW(nullptr, sunshine_path, _countof(sunshine_path));
     return std::filesystem::path {sunshine_path}.remove_filename() / L"config"sv;
