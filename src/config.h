@@ -114,6 +114,7 @@ namespace config {
       std::optional<int> amd_quality_av1;
       std::optional<int> amd_preanalysis;
       std::optional<int> amd_vbaq;
+      std::optional<int> amd_max_au_size;  ///< Maximum AMF H.264/HEVC access unit size in bits; unset uses the encoder default.
       int amd_coder;
     } amd;  ///< AMD AMF encoder options.
 
@@ -303,10 +304,10 @@ namespace config {
     std::chrono::duration<double> key_repeat_period;  ///< Interval between repeated keyboard key events.
 
     std::string gamepad;  ///< Virtual controller backend selected by configuration.
-    bool ds4_back_as_touchpad_click;  ///< Map the DS4 Back button to a touchpad click.
-    bool motion_as_ds4;  ///< Expose motion controls through the DS4 protocol.
-    bool touchpad_as_ds4;  ///< Expose touchpad input through the DS4 protocol.
-    bool ds5_inputtino_randomize_mac;  ///< Randomize the inputtino DualSense MAC address.
+    bool ds4_back_as_touchpad_click;  ///< Map Back/Select to touchpad click for PlayStation-style gamepads.
+    bool motion_as_ds4;  ///< Prefer PlayStation-style emulation for client gamepads with motion controls.
+    bool touchpad_as_ds4;  ///< Prefer PlayStation-style emulation for client gamepads with touchpad input.
+    bool virtualhid_randomize_mac;  ///< Randomize the libvirtualhid virtual controller MAC address.
 
     bool keyboard;  ///< Enable keyboard input from clients.
     bool key_rightalt_to_key_win;  ///< Map the client Right Alt key to the Windows key.
@@ -410,6 +411,15 @@ namespace config {
   extern nvhttp_t nvhttp;
   extern input_t input;
   extern sunshine_t sunshine;
+
+#ifdef SUNSHINE_TESTS
+  /**
+   * @brief Parse and apply serialized configuration text for unit tests.
+   *
+   * @param file_content Raw configuration text to parse and apply.
+   */
+  void apply_config_for_test(std::string_view file_content);
+#endif
 
   /**
    * @brief Parse serialized text into the corresponding runtime representation.

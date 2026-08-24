@@ -327,6 +327,7 @@ editing the `conf` file in a text editor. Use the examples as reference.
         <td>Description</td>
         <td colspan="2">
             The type of gamepad to emulate on the host.
+            @note{This option applies to FreeBSD, Linux, and Windows.}
         </td>
     </tr>
     <tr>
@@ -342,30 +343,33 @@ editing the `conf` file in a text editor. Use the examples as reference.
             @endcode</td>
     </tr>
     <tr>
-        <td rowspan="6">Choices</td>
+        <td rowspan="7">Choices</td>
+        <td>generic</td>
+        <td>Generic HID gamepad</td>
+    </tr>
+    <tr>
         <td>ds4</td>
-        <td>DualShock 4 controller (PS4)
-            @note{This option applies to Windows only.}</td>
+        <td>DualShock 4 controller (PS4)</td>
     </tr>
     <tr>
         <td>ds5</td>
-        <td>DualShock 5 controller (PS5)
-            @note{This option applies to FreeBSD and Linux only.}</td>
+        <td>DualShock 5 controller (PS5)</td>
     </tr>
     <tr>
         <td>switch</td>
-        <td>Switch Pro controller
-            @note{This option applies to FreeBSD and Linux only.}</td>
+        <td>Switch Pro controller</td>
     </tr>
     <tr>
         <td>x360</td>
-        <td>Xbox 360 controller
-            @note{This option applies to Windows only.}</td>
+        <td>Xbox 360 controller</td>
     </tr>
     <tr>
         <td>xone</td>
-        <td>Xbox One controller
-            @note{This option applies to FreeBSD and Linux only.}</td>
+        <td>Xbox One controller</td>
+    </tr>
+    <tr>
+        <td>xseries</td>
+        <td>Xbox Series controller</td>
     </tr>
 </table>
 
@@ -375,9 +379,9 @@ editing the `conf` file in a text editor. Use the examples as reference.
     <tr>
         <td>Description</td>
         <td colspan="2">
-            Allow Select/Back inputs to also trigger DS4 touchpad click. Useful for clients looking to
-            emulate touchpad click on Xinput devices.
-            @hint{Only applies when gamepad is set to ds4 manually. Unused in other gamepad modes.}
+            Allow Select/Back inputs to also trigger a PlayStation-style gamepad touchpad click. Useful
+            for clients looking to emulate touchpad click on XInput devices.
+            @hint{Applies to ds4, ds5, and automatically selected PlayStation-style gamepads.}
         </td>
     </tr>
     <tr>
@@ -401,7 +405,7 @@ editing the `conf` file in a text editor. Use the examples as reference.
         <td>Description</td>
         <td colspan="2">
             If a client reports that a connected gamepad has motion sensor support, emulate it on the
-            host as a DS4 controller.
+            host as a PlayStation-style controller.
             <br>
             <br>
             When disabled, motion sensors will not be taken into account during gamepad type selection.
@@ -428,8 +432,8 @@ editing the `conf` file in a text editor. Use the examples as reference.
     <tr>
         <td>Description</td>
         <td colspan="2">
-            If a client reports that a connected gamepad has a touchpad, emulate it on the host
-            as a DS4 controller.
+            If a client reports that a connected gamepad has a touchpad, emulate it on the host as a
+            PlayStation-style controller.
             <br>
             <br>
             When disabled, touchpad presence will not be taken into account during gamepad type selection.
@@ -450,14 +454,13 @@ editing the `conf` file in a text editor. Use the examples as reference.
     </tr>
 </table>
 
-### ds5_inputtino_randomize_mac
+### virtualhid_randomize_mac
 
 <table>
     <tr>
         <td>Description</td>
         <td colspan="2">
-            Randomize the MAC-Address for the generated virtual controller.
-            @hint{Only applies on linux for gamepads created as PS5-style controllers}
+            Randomize the MAC address for PlayStation-style virtual controllers created by libvirtualhid.
         </td>
     </tr>
     <tr>
@@ -469,7 +472,7 @@ editing the `conf` file in a text editor. Use the examples as reference.
     <tr>
         <td>Example</td>
         <td colspan="2">@code{}
-            ds5_inputtino_randomize_mac = enabled
+            virtualhid_randomize_mac = enabled
             @endcode</td>
     </tr>
 </table>
@@ -1529,9 +1532,9 @@ editing the `conf` file in a text editor. Use the examples as reference.
     </tr>
     <tr>
         <td>Default</td>
-        <td colspan="2">@code{}
-            (empty - bind to all interfaces)
-            @endcode</td>
+        <td colspan="2">
+            Empty, binds to all interfaces
+            </td>
     </tr>
     <tr>
         <td>Example (IPv4)</td>
@@ -1633,10 +1636,10 @@ editing the `conf` file in a text editor. Use the examples as reference.
     </tr>
     <tr>
         <td>Default</td>
-        <td colspan="2">@code{}
-            (empty - uses built-in defaults: https://localhost, https://127.0.0.1, https://[::1],
-            with configured UI port variants)
-            @endcode</td>
+        <td colspan="2">
+            Empty, uses built-in defaults: https://localhost, https://127.0.0.1, https://[::1],
+            with configured UI port variants
+            </td>
     </tr>
     <tr>
         <td>Example</td>
@@ -2783,6 +2786,40 @@ editing the `conf` file in a text editor. Use the examples as reference.
         <td>Example</td>
         <td colspan="2">@code{}
             amd_enforce_hrd = disabled
+            @endcode</td>
+    </tr>
+</table>
+
+### amd_max_au_size
+
+<table>
+    <tr>
+        <td>Description</td>
+        <td colspan="2">
+            Maximum Access Unit (frame) size for rate control, in bits. This is a last-resort
+            control for capping oversized encoded frames that would otherwise exceed Sunshine's
+            four-block FEC capacity and be sent without FEC protection.
+            @note{This option only applies to H.264 and HEVC when using amdvce [encoder](#encoder).
+            AV1 does not support this option.}
+            @note{The FEC ceiling depends on the negotiated packet size and [fec_percentage](#fec_percentage),
+            not the average bitrate or frame rate. The approximate encoded-payload ceiling is
+            `4 * floor(25500 / (100 + fec_percentage)) * (packet_size - 16) * 8` bits, before
+            allowing for the short frame header or codec-header replacements. With 20% FEC and
+            1024-byte packets, 6400000 bits provides conservative headroom.}
+            @warning{Setting this unnecessarily low can reduce image quality, especially for
+            keyframes. Leave it empty unless oversized frames are actually causing FEC to be skipped.}
+        </td>
+    </tr>
+    <tr>
+        <td>Default</td>
+        <td colspan="2">
+            Empty, uses encoder default.
+            </td>
+    </tr>
+    <tr>
+        <td>Example</td>
+        <td colspan="2">@code{}
+            amd_max_au_size = 6400000
             @endcode</td>
     </tr>
 </table>
