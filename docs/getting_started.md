@@ -617,6 +617,8 @@ All shortcuts start with `Ctrl+Alt+Shift`, just like Moonlight.
 * `$$` will be replaced by `$`, e.g. `$$(HOME)` will be become `$(HOME)`
 * `env` - Adds or overwrites Environment variables for the commands/applications run by Sunshine.
   This can only be changed by modifying the `apps.json` file directly.
+* An application can override the global emulated controller type for its session. The per-app options
+  are Global, Automatic, DS4, and Xbox (Xbox 360 emulation).
 
 ### Considerations
 * On Windows, Sunshine uses the Desktop Duplication API which only supports capturing from the GPU used for display.

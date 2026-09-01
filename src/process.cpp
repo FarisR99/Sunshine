@@ -5,6 +5,8 @@
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS
 
 // standard includes
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <string>
 #include <thread>
@@ -172,7 +174,7 @@ namespace proc {
     // configure_display()/probe_encoders(), but that terminate() wipes it; re-applying now ensures
     // the override is still active when the streaming capture initializes after this returns.
     config::apply_app_display_override(_app.display_output_name, _app.display_capture_crop);
-    config::apply_app_input_override(_app.input_keyboard, _app.input_mouse, _app.input_controller);
+    config::apply_app_input_override(_app.input_keyboard, _app.input_mouse, _app.input_controller, _app.input_gamepad);
 
     // Add Stream-specific environment variables
     _env["SUNSHINE_APP_ID"] = std::to_string(_app_id);
@@ -708,6 +710,7 @@ namespace proc {
         auto input_keyboard = app_node.get_optional<bool>("keyboard"s);
         auto input_mouse = app_node.get_optional<bool>("mouse"s);
         auto input_controller = app_node.get_optional<bool>("controller"s);
+        auto input_gamepad = app_node.get_optional<std::string>("gamepad"s);
         auto elevated = app_node.get_optional<bool>("elevated"s);
         auto auto_detach = app_node.get_optional<bool>("auto-detach"s);
         auto wait_all = app_node.get_optional<bool>("wait-all"s);
@@ -795,6 +798,15 @@ namespace proc {
 
         if (input_controller) {
           ctx.input_controller = *input_controller;
+        }
+
+        if (input_gamepad && !input_gamepad->empty()) {
+          constexpr std::array supported_app_gamepad_types {"auto"sv, "ds4"sv, "x360"sv};
+          if (std::ranges::find(supported_app_gamepad_types, *input_gamepad) != supported_app_gamepad_types.end()) {
+            ctx.input_gamepad = *input_gamepad;
+          } else {
+            BOOST_LOG(warning) << "Ignoring unsupported per-app gamepad type ["sv << *input_gamepad << "] for app ["sv << name << ']';
+          }
         }
 
         ctx.elevated = elevated.value_or(false);

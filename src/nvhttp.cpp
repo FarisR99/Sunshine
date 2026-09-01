@@ -1055,7 +1055,7 @@ namespace nvhttp {
       });
       if (app_iter != apps.end()) {
         config::apply_app_display_override(app_iter->display_output_name, app_iter->display_capture_crop);
-        config::apply_app_input_override(app_iter->input_keyboard, app_iter->input_mouse, app_iter->input_controller);
+        config::apply_app_input_override(app_iter->input_keyboard, app_iter->input_mouse, app_iter->input_controller, app_iter->input_gamepad);
       }
 
       // We want to prepare display only if there are no active sessions at
@@ -1179,7 +1179,7 @@ namespace nvhttp {
       });
       if (app_iter != apps.end()) {
         config::apply_app_display_override(app_iter->display_output_name, app_iter->display_capture_crop);
-        config::apply_app_input_override(app_iter->input_keyboard, app_iter->input_mouse, app_iter->input_controller);
+        config::apply_app_input_override(app_iter->input_keyboard, app_iter->input_mouse, app_iter->input_controller, app_iter->input_gamepad);
       }
 
       // We want to prepare display only if there are no active sessions at

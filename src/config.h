@@ -454,18 +454,19 @@ namespace config {
 
   /**
    * @brief Apply a per-app override on top of the global `input` config, saving the prior values so
-   * `clear_app_input_override()` can restore them. Each argument is tri-state: an empty optional
-   * leaves that input flag unchanged (inherit the instance default). A no-op when all are empty.
+   * `clear_app_input_override()` can restore them. Empty optionals leave their setting unchanged
+   * (inherit the instance default). A no-op when all arguments are empty.
    *
    * @param keyboard Per-app override for `input.keyboard`, or empty to leave it unchanged.
    * @param mouse Per-app override for `input.mouse`, or empty to leave it unchanged.
    * @param controller Per-app override for `input.controller`, or empty to leave it unchanged.
+   * @param gamepad Per-app override for `input.gamepad`, or empty to leave it unchanged.
    */
-  void apply_app_input_override(const std::optional<bool> &keyboard, const std::optional<bool> &mouse, const std::optional<bool> &controller);
+  void apply_app_input_override(const std::optional<bool> &keyboard, const std::optional<bool> &mouse, const std::optional<bool> &controller, const std::optional<std::string> &gamepad);
 
   /**
-   * @brief Restore `input.keyboard`/`input.mouse`/`input.controller` to the values saved by the most
-   * recent `apply_app_input_override()` call. A no-op if no override is currently applied.
+   * @brief Restore input settings to the values saved by the most recent
+   * `apply_app_input_override()` call. A no-op if no override is currently applied.
    */
   void clear_app_input_override();
 }  // namespace config

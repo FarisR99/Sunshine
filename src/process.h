@@ -93,13 +93,13 @@ namespace proc {
     std::optional<std::string> display_capture_crop;
 
     /**
-     * @brief Per-app overrides for `config::input.keyboard`/`mouse`/`controller`, applied for the
-     * duration of this app's session and reverted on app exit. Each is tri-state: unset means
-     * inherit the instance-global input setting; a value forces that input on/off for this app.
+     * @brief Per-app overrides for input settings, applied for the duration of this app's session
+     * and reverted on app exit. Empty values inherit the instance-global setting.
      */
     std::optional<bool> input_keyboard;  ///< Per-app override for keyboard input from clients.
     std::optional<bool> input_mouse;  ///< Per-app override for mouse input from clients.
     std::optional<bool> input_controller;  ///< Per-app override for controller input from clients.
+    std::optional<std::string> input_gamepad;  ///< Per-app override for the emulated gamepad type.
 
     bool elevated;  ///< Whether the process should be launched elevated.
     bool auto_detach;  ///< Whether the process should detach automatically.

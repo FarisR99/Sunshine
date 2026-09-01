@@ -2167,11 +2167,12 @@ namespace config {
     bool saved_input_keyboard {true};  ///< `input.keyboard` prior to the active per-app override.
     bool saved_input_mouse {true};  ///< `input.mouse` prior to the active per-app override.
     bool saved_input_controller {true};  ///< `input.controller` prior to the active per-app override.
+    std::string saved_input_gamepad;  ///< `input.gamepad` prior to the active per-app override.
     bool app_input_override_active {false};  ///< Whether an input override is currently applied.
   }  // namespace
 
-  void apply_app_input_override(const std::optional<bool> &keyboard, const std::optional<bool> &mouse, const std::optional<bool> &controller) {
-    if (!keyboard && !mouse && !controller) {
+  void apply_app_input_override(const std::optional<bool> &keyboard, const std::optional<bool> &mouse, const std::optional<bool> &controller, const std::optional<std::string> &gamepad) {
+    if (!keyboard && !mouse && !controller && !gamepad) {
       return;
     }
 
@@ -2181,6 +2182,7 @@ namespace config {
       saved_input_keyboard = input.keyboard;
       saved_input_mouse = input.mouse;
       saved_input_controller = input.controller;
+      saved_input_gamepad = input.gamepad;
       app_input_override_active = true;
     }
 
@@ -2195,6 +2197,10 @@ namespace config {
     if (controller) {
       input.controller = *controller;
     }
+
+    if (gamepad) {
+      input.gamepad = *gamepad;
+    }
   }
 
   void clear_app_input_override() {
@@ -2205,6 +2211,7 @@ namespace config {
     input.keyboard = saved_input_keyboard;
     input.mouse = saved_input_mouse;
     input.controller = saved_input_controller;
+    input.gamepad = std::move(saved_input_gamepad);
     app_input_override_active = false;
   }
 }  // namespace config

@@ -381,7 +381,8 @@ TEST_F(ProcessParseTest, InputOverrideFieldsParsed) {
         "name": "Stardew Valley",
         "keyboard": false,
         "mouse": false,
-        "controller": true
+        "controller": true,
+        "gamepad": "ds4"
       }
     ]
   })";
@@ -398,6 +399,8 @@ TEST_F(ProcessParseTest, InputOverrideFieldsParsed) {
   EXPECT_FALSE(*apps[0].input_mouse);
   ASSERT_TRUE(apps[0].input_controller.has_value());
   EXPECT_TRUE(*apps[0].input_controller);
+  ASSERT_TRUE(apps[0].input_gamepad.has_value());
+  EXPECT_EQ(*apps[0].input_gamepad, "ds4");
 }
 
 TEST_F(ProcessParseTest, InputOverrideFieldsAbsentByDefault) {
@@ -420,6 +423,32 @@ TEST_F(ProcessParseTest, InputOverrideFieldsAbsentByDefault) {
   EXPECT_FALSE(apps[0].input_keyboard.has_value());
   EXPECT_FALSE(apps[0].input_mouse.has_value());
   EXPECT_FALSE(apps[0].input_controller.has_value());
+  EXPECT_FALSE(apps[0].input_gamepad.has_value());
+}
+
+TEST_F(ProcessParseTest, InputGamepadOverrideAcceptsSupportedTypesAndRejectsInvalidTypes) {
+  constexpr auto json = R"({
+    "env": {},
+    "apps": [
+      { "name": "Automatic", "gamepad": "auto" },
+      { "name": "DS4", "gamepad": "ds4" },
+      { "name": "Xbox", "gamepad": "x360" },
+      { "name": "Global", "gamepad": "unsupported" }
+    ]
+  })";
+
+  auto proc_opt = parseAppsJson(json);
+  ASSERT_TRUE(proc_opt.has_value());
+
+  const auto &apps = proc_opt->get_apps();
+  ASSERT_EQ(apps.size(), 4u);
+  ASSERT_TRUE(apps[0].input_gamepad.has_value());
+  EXPECT_EQ(*apps[0].input_gamepad, "auto");
+  ASSERT_TRUE(apps[1].input_gamepad.has_value());
+  EXPECT_EQ(*apps[1].input_gamepad, "ds4");
+  ASSERT_TRUE(apps[2].input_gamepad.has_value());
+  EXPECT_EQ(*apps[2].input_gamepad, "x360");
+  EXPECT_FALSE(apps[3].input_gamepad.has_value());
 }
 
 /**
@@ -513,6 +542,7 @@ protected:
     original_keyboard = config::input.keyboard;
     original_mouse = config::input.mouse;
     original_controller = config::input.controller;
+    original_gamepad = config::input.gamepad;
   }
 
   void TearDown() override {
@@ -520,12 +550,14 @@ protected:
     config::input.keyboard = original_keyboard;
     config::input.mouse = original_mouse;
     config::input.controller = original_controller;
+    config::input.gamepad = original_gamepad;
     BaseTest::TearDown();
   }
 
   bool original_keyboard;
   bool original_mouse;
   bool original_controller;
+  std::string original_gamepad;
 };
 
 TEST_F(ConfigAppInputOverrideTest, AppliesOnlySpecifiedFieldsAndClearRestores) {
@@ -534,7 +566,7 @@ TEST_F(ConfigAppInputOverrideTest, AppliesOnlySpecifiedFieldsAndClearRestores) {
   config::input.controller = true;
 
   // Force keyboard+mouse off (gamepad-only); leave controller unset so it inherits.
-  config::apply_app_input_override(std::optional<bool> {false}, std::optional<bool> {false}, std::nullopt);
+  config::apply_app_input_override(std::optional<bool> {false}, std::optional<bool> {false}, std::nullopt, std::nullopt);
 
   EXPECT_FALSE(config::input.keyboard);
   EXPECT_FALSE(config::input.mouse);
@@ -552,7 +584,7 @@ TEST_F(ConfigAppInputOverrideTest, ApplyIsNoOpWhenAllArgumentsEmpty) {
   config::input.mouse = false;
   config::input.controller = true;
 
-  config::apply_app_input_override(std::nullopt, std::nullopt, std::nullopt);
+  config::apply_app_input_override(std::nullopt, std::nullopt, std::nullopt, std::nullopt);
 
   EXPECT_TRUE(config::input.keyboard);
   EXPECT_FALSE(config::input.mouse);
@@ -569,8 +601,8 @@ TEST_F(ConfigAppInputOverrideTest, RepeatedApplyDoesNotClobberSavedStateAndClear
   config::input.keyboard = true;
 
   // Simulates /resume re-applying while the /launch override is still active.
-  config::apply_app_input_override(std::optional<bool> {false}, std::nullopt, std::nullopt);
-  config::apply_app_input_override(std::optional<bool> {false}, std::nullopt, std::nullopt);
+  config::apply_app_input_override(std::optional<bool> {false}, std::nullopt, std::nullopt, std::nullopt);
+  config::apply_app_input_override(std::optional<bool> {false}, std::nullopt, std::nullopt, std::nullopt);
 
   config::clear_app_input_override();
   EXPECT_TRUE(config::input.keyboard);
@@ -578,6 +610,19 @@ TEST_F(ConfigAppInputOverrideTest, RepeatedApplyDoesNotClobberSavedStateAndClear
   // Guards against both terminate() and nvhttp's cancel()/fail-guard paths firing.
   config::clear_app_input_override();
   EXPECT_TRUE(config::input.keyboard);
+}
+
+TEST_F(ConfigAppInputOverrideTest, AppliesGamepadTypeAndRestoresGlobalType) {
+  config::input.gamepad = "x360";
+
+  config::apply_app_input_override(std::nullopt, std::nullopt, std::nullopt, std::optional<std::string> {"ds4"});
+  EXPECT_EQ(config::input.gamepad, "ds4");
+
+  config::apply_app_input_override(std::nullopt, std::nullopt, std::nullopt, std::optional<std::string> {"auto"});
+  EXPECT_EQ(config::input.gamepad, "auto");
+
+  config::clear_app_input_override();
+  EXPECT_EQ(config::input.gamepad, "x360");
 }
 
 TEST(ParseCaptureCropTest, ParsesWellFormedRect) {

@@ -345,6 +345,16 @@
               </select>
               <div id="appInputControllerHelp" class="form-text">{{ $t('apps.input_controller_desc') }}</div>
             </div>
+            <div class="mb-3" v-if="platform !== 'macos'">
+              <label for="appGamepad" class="form-label">{{ $t('apps.gamepad') }}</label>
+              <select id="appGamepad" class="form-select" aria-describedby="appGamepadHelp" v-model="editForm['gamepad']">
+                <option :value="undefined">{{ $t('apps.gamepad_global') }}</option>
+                <option value="auto">{{ $t('_common.auto') }}</option>
+                <option value="ds4">{{ $t('config.gamepad_ds4') }}</option>
+                <option value="x360">{{ $t('apps.gamepad_xbox') }}</option>
+              </select>
+              <div id="appGamepadHelp" class="form-text">{{ $t('apps.gamepad_desc') }}</div>
+            </div>
             <div class="mb-3">
               <label for="appImagePath" class="form-label">{{ $t('apps.image') }}</label>
               <div class="input-group">
@@ -812,6 +822,9 @@
         if (this.editForm["exit-timeout"] === undefined) {
           this.editForm["exit-timeout"] = 5;
         }
+        if (this.editForm["gamepad"] === "") {
+          this.editForm["gamepad"] = undefined;
+        }
         this.openEditModal();
       },
       showDeleteModal(id) {
@@ -1033,6 +1046,9 @@
       },
       save() {
         this.editForm["image-path"] = this.editForm["image-path"].toString().replace(/"/g, '');
+        if (this.editForm["gamepad"] === "") {
+          this.editForm["gamepad"] = undefined;
+        }
         apiFetch("./api/apps", {
           method: "POST",
           headers: {

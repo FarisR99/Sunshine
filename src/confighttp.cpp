@@ -1056,6 +1056,7 @@ namespace confighttp {
    *   "auto-detach": true,
    *   "wait-all": true,
    *   "exit-timeout": 5,
+   *   "gamepad": "auto",
    *   "prep-cmd": [
    *     {
    *       "do": "Command to prepare",
