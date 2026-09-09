@@ -24,6 +24,7 @@ pkg install -y \
   audio/opus \
   audio/pulseaudio \
   devel/cmake \
+  devel/doxygen \
   devel/evdev-proto \
   devel/git \
   devel/libevdev \
@@ -32,6 +33,7 @@ pkg install -y \
   devel/pkgconf \
   devel/qt6-base \
   ftp/curl \
+  graphics/graphviz \
   graphics/libdrm \
   graphics/qt6-svg \
   graphics/wayland \
@@ -182,7 +184,6 @@ dependencies=(
 if [[ "${MSYSTEM}" == "UCRT64" ]]; then
   dependencies+=(
     "mingw-w64-${TOOLCHAIN}-MinHook"
-    "mingw-w64-${TOOLCHAIN}-nodejs"
     "mingw-w64-${TOOLCHAIN}-nsis"
   )
 fi
@@ -199,7 +200,8 @@ available through the normal toolchain prefix.
 
 To create a WiX installer, you also need to install [.NET](https://dotnet.microsoft.com/download).
 
-For ARM64: To build frontend, you also need to install [Node.JS](https://nodejs.org/en/download)
+To build the frontend, install native [Node.js](https://nodejs.org/en/download) for the target architecture. The
+MSYS2 Node.js package is not supported because its shared runtime cannot load the native binding required by Rolldown.
 
 ### Clone
 Ensure [git](https://git-scm.com) is installed on your system, then clone the repository using the following command:

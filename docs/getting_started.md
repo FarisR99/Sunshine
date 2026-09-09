@@ -50,6 +50,11 @@ sudo pkg delete Sunshine
 
 ### Linux
 
+LizardByte publishes DEB and RPM packages to the
+[stable Cloudsmith repository](https://cloudsmith.io/~lizardbyte/repos/stable/) for releases and the
+[beta Cloudsmith repository](https://cloudsmith.io/~lizardbyte/repos/beta/) for prereleases. The packages also remain
+available for manual download from each GitHub release.
+
 **CUDA Compatibility**
 
 CUDA is used for NVFBC capture.
@@ -68,28 +73,19 @@ CUDA is used for NVFBC capture.
         <th>Package</th>
     </tr>
     <tr>
-        <td rowspan="8">13.1.1</td>
-        <td rowspan="8">590.48.01</td>
-        <td rowspan="8">50;52;60;61;62;70;72;75;80;86;87;89;90;100;101;103;120;121</td>
-        <td>sunshine.AppImage</td>
+        <td rowspan="5">13.1.1</td>
+        <td rowspan="5">590.48.01</td>
+        <td rowspan="5">50;52;60;61;62;70;72;75;80;86;87;89;90;100;101;103;120;121</td>
+        <td>Sunshine_{version}_{arch}.AppImage</td>
     </tr>
     <tr>
-        <td>sunshine-ubuntu-22.04-{arch}.deb</td>
-    </tr>
-    <tr>
-        <td>sunshine-ubuntu-24.04-{arch}.deb</td>
-    </tr>
-    <tr>
-        <td>sunshine-debian-trixie-{arch}.deb</td>
+        <td>sunshine_{version}-1+{distro}{distro-version}_{arch}.deb</td>
     </tr>
     <tr>
         <td>sunshine_{arch}.flatpak</td>
     </tr>
     <tr>
-        <td>Sunshine (copr - Fedora)</td>
-    </tr>
-    <tr>
-        <td>Sunshine (copr - OpenSUSE)</td>
+        <td>Sunshine-{version}-1.{distro+version}.{arch}.rpm</td>
     </tr>
     <tr>
         <td>sunshine.pkg.tar.zst</td>
@@ -106,25 +102,25 @@ CUDA is used for NVFBC capture.
 > The AppImage is built on Ubuntu 22.04, which requires `glibc 2.35` or newer and `libstdc++ 3.4.11` or newer.
 
 ##### Install
-1. Download [sunshine.AppImage](https://github.com/LizardByte/Sunshine/releases/latest/download/sunshine.AppImage)
+1. Download `Sunshine_{version}_{arch}.AppImage`
    into your home directory.
    ```bash
    cd ~
-   wget https://github.com/LizardByte/Sunshine/releases/latest/download/sunshine.AppImage
+   wget https://github.com/LizardByte/Sunshine/releases/latest/download/Sunshine_{version}_{arch}.AppImage
    ```
 2. Open terminal and run the following command.
    ```bash
-   ./sunshine.AppImage --install
+   ./Sunshine_{version}_{arch}.AppImage --install
    ```
 
 ##### Run
 ```bash
-./sunshine.AppImage --install && ./sunshine.AppImage
+./Sunshine_{version}_{arch}.AppImage --install && ./Sunshine_{version}_{arch}.AppImage
 ```
 
 ##### Uninstall
 ```bash
-./sunshine.AppImage --remove
+./Sunshine_{version}_{arch}.AppImage --remove
 ```
 
 #### ArchLinux
@@ -160,15 +156,37 @@ pacman -R sunshine
 
 #### Debian/Ubuntu
 
-##### Install
-Download `sunshine-{distro}-{distro-version}-{arch}.deb` and run the following command.
+##### Install from Cloudsmith
+
+Configure the `stable` repository for releases or the `beta` repository for prereleases. The setup script
+automatically selects the appropriate Debian or Ubuntu release.
+
+@tabs{
+  @tab_with_pipe{ Stable |:| ```bash
+    curl -1sLf 'https://dl.cloudsmith.io/public/lizardbyte/stable/cfg/setup/bash.deb.sh' | sudo -E bash
+    ```}
+  @tab_with_pipe{ Beta |:| ```bash
+    curl -1sLf 'https://dl.cloudsmith.io/public/lizardbyte/beta/cfg/setup/bash.deb.sh' | sudo -E bash
+    ```}
+}
+
+Install Sunshine after configuring the repository.
+
 ```bash
-sudo dpkg -i ./sunshine-{distro}-{distro-version}-{arch}.deb
+sudo apt update
+sudo apt install sunshine
+```
+
+##### Install from GitHub releases
+
+Download `sunshine_{version}-1+{distro}{distro-version}_{arch}.deb` and run the following command.
+```bash
+sudo dpkg -i ./sunshine_{version}-1+{distro}{distro-version}_{arch}.deb
 ```
 
 > [!NOTE]
-> The `{distro-version}` is the version of the distro we built the package on. The `{arch}` is the
-> architecture of your operating system.
+> The `{version}` is the Sunshine version. The `1+{distro}{distro-version}` suffix is the Debian package revision and
+> identifies the distro used to build it. The `{arch}` is the architecture of your operating system.
 
 > [!TIP]
 > You can double-click the deb file to see details about the package and begin installation.
@@ -183,23 +201,61 @@ sudo apt remove sunshine
 > [!TIP]
 > The package name is case-sensitive.
 
-##### Install (GitHub releases)
-Download `Sunshine-{version}.{distro+version}.{arch}.rpm` and run the following command.
-```bash
-sudo dnf install ./Sunshine-{version}.{distro}.{arch}.rpm
-```
+##### Install from Cloudsmith
+
+Configure the `stable` repository for releases or the `beta` repository for prereleases. Cloudsmith's setup script
+automatically selects Fedora or openSUSE and the appropriate release.
+
+@tabs{
+  @tab_with_pipe{ Stable |:| ```bash
+    curl -1sLf 'https://dl.cloudsmith.io/public/lizardbyte/stable/cfg/setup/bash.rpm.sh' | sudo -E bash
+    ```}
+  @tab_with_pipe{ Beta |:| ```bash
+    curl -1sLf 'https://dl.cloudsmith.io/public/lizardbyte/beta/cfg/setup/bash.rpm.sh' | sudo -E bash
+    ```}
+}
+
+Install Sunshine with your distribution's package manager.
+
+@tabs{
+  @tab{ Fedora | ```bash
+    sudo dnf install Sunshine
+    ```}
+  @tab{ openSUSE | ```bash
+    sudo zypper install Sunshine
+    ```}
+}
+
+##### Install from GitHub releases
+
+Download `Sunshine-{version}-1.{distro+version}.{arch}.rpm` and run the following command.
+
+@tabs{
+  @tab{ Fedora | ```bash
+    sudo dnf install ./Sunshine-{version}-1.{distro+version}.{arch}.rpm
+    ```}
+  @tab{ openSUSE | ```bash
+    sudo zypper install ./Sunshine-{version}-1.{distro+version}.{arch}.rpm
+    ```}
+}
 
 > [!NOTE]
-> The `{distro+version}` is the distro and distro version of the distro we built the package on. The `{arch}` is the
-> architecture of your operating system.
+> The `{version}` is the Sunshine version. The `1` is the RPM package release. The `{distro+version}` is the distro and
+> distro version of the distro we built the package on. The `{arch}` is the architecture of your operating system.
 
 > [!TIP]
 > You can double-click the rpm file to see details about the package and begin installation.
 
 ##### Uninstall
-```bash
-sudo dnf remove sunshine
-```
+
+@tabs{
+  @tab{ Fedora | ```bash
+    sudo dnf remove Sunshine
+    ```}
+  @tab{ openSUSE | ```bash
+    sudo zypper remove Sunshine
+    ```}
+}
 
 ##### Install (Copr)
 
@@ -478,14 +534,12 @@ and enter its device name in the [audio_sink](configuration.md#audio_sink) field
 > Gamepads are not currently supported.
 
 ### Windows
-Sunshine uses libvirtualhid for virtual input on Windows. You must install the
-[Virtual HID Driver](https://github.com/LizardByte/libvirtualhid/releases/latest) separately for a driver-backed Raw
-Input keyboard and mouse plus full virtual gamepad support. ViGEmBus is detected only as a limited fallback for Xbox
-360 and DualShock 4 gamepads when libvirtualhid is unavailable.
+Sunshine supports two virtual gamepad backends on Windows. You can install the
+[Virtual HID Driver](https://github.com/LizardByte/libvirtualhid/releases/latest) separately as an optional paid upgrade
+for a driver-backed Raw Input keyboard and mouse plus full virtual gamepad support. ViGEmBus remains available as a
+limited alternative for Xbox 360 and DualShock 4 gamepads, but it has reached end of life.
 
-Sunshine requires Virtual HID Driver version `2026.829.2338.54` or newer. Earlier releases use incompatible Windows
-control and broker protocols and must be upgraded together with Sunshine's embedded libvirtualhid library. Local
-development driver builds using a `0.0.0.*` version remain supported.
+When Virtual HID Driver is used, Sunshine requires version `2026.905.2300.20` or newer.
 
 Compared with the ViGEmBus fallback, Virtual HID Driver can create Xbox One, Xbox Series, DualSense, Nintendo Switch
 Pro, and Generic gamepads in addition to Xbox 360 and DualShock 4. It can also expose controller-specific features such
@@ -501,12 +555,16 @@ Relative mouse movement, buttons, and scrolling are exposed as a real HID
 mouse so applications using Raw Input can receive them. Absolute mouse positioning continues to use Windows input
 injection. When the driver-backed mouse cannot be created, libvirtualhid retains its legacy SendInput fallback.
 
-The Virtual HID Driver requires an active machine license for driver-backed devices, including gamepads and the Raw
+The Virtual HID Driver requires an active paid machine license for driver-backed devices, including gamepads and the Raw
 Input keyboard and mouse. Sunshine shows the current license status and actions on the Web UI Troubleshooting page and
-in the **Virtual HID Driver** system tray submenu. When Sunshine starts on an unactivated machine, select its tray
-notification to open the activation and purchase options in the Web UI. Sunshine recreates the shared keyboard and
-mouse after a successful license action, so switching between the HID and SendInput paths does not require restarting
-Sunshine.
+in the **Virtual HID Driver** system tray submenu. In **Configuration > Input**, choose whether Sunshine may use **All
+Available Drivers**, only **Virtual HID Driver**, or only **ViGEmBus**. Sunshine continues to show the selection prompt
+until this setting is saved. If an active Virtual HID Driver license is already present, Sunshine selects **All Available
+Drivers** automatically. That policy prefers Virtual HID Driver. When its license is not valid, Sunshine falls back to
+ViGEmBus for Xbox 360 and DualShock 4 gamepads and to SendInput for keyboard and mouse. Selecting only **ViGEmBus**
+suppresses Virtual HID Driver startup notifications and limits the available emulated gamepads to Xbox 360 and
+DualShock 4. Sunshine recreates the shared keyboard and mouse after a successful license action, so switching between
+the HID and SendInput paths does not require restarting Sunshine.
 
 After installing or updating virtual input drivers, it is recommended to restart your computer.
 
@@ -596,7 +654,7 @@ To get a list of available arguments, run the following command.
       sunshine --help
       ```}
    @tab{ AppImage | ```bash
-      ./sunshine.AppImage --help
+      ./Sunshine_{version}_{arch}.AppImage --help
       ```}
    @tab{ Flatpak | ```bash
       flatpak run --command=sunshine dev.lizardbyte.app.Sunshine --help

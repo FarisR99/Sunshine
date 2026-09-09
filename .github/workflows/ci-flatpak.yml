@@ -20,10 +20,7 @@ jobs:
     name: ${{ matrix.arch }}
     env:
       APP_ID: dev.lizardbyte.app.Sunshine
-      FREEDESKTOP_SDK_VERSION: "25.08"
-      KDE_PLATFORM_VERSION: "6.10"
       MATRIX_ARCH: ${{ matrix.arch }}
-      NODE_VERSION: "20"
     permissions:
       contents: read
     runs-on: ${{ matrix.runner }}
@@ -38,7 +35,7 @@ jobs:
     steps:
       - name: More space
         if: matrix.arch == 'x86_64'
-        uses: LizardByte/actions/actions/more_space@aef56a192d51ec7445b29117a32b9bd25d2b103c  # v2026.829.140353
+        uses: LizardByte/actions/actions/more_space@188c8ccad593e0f68bcf6aacb6bf84f10359d26f  # v2026.905.43751
         with:
           analyze-space-savings: true
           clean-all: true
@@ -61,10 +58,53 @@ jobs:
 
       - name: Sync Python tools
         run: |
-          uv sync --locked --only-group flatpak \
-            --python "${PYTHON_VERSION}" \
-            --no-python-downloads \
+          uv_sync_args=(
+            --locked
+            --only-group flatpak
+            --python "${PYTHON_VERSION}"
+            --no-python-downloads
             --no-install-project
+          )
+          # uv.lock pins external artifacts; reviewed local Flatpak generator build hooks are required.
+          uv sync "${uv_sync_args[@]}"  # NOSONAR(githubactions:S8541, githubactions:S8544)
+
+      - name: Read Flatpak SDK versions
+        run: |
+          uv run --locked --no-build --no-sync python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          import yaml
+
+          manifest_path = Path("packaging/linux/flatpak/dev.lizardbyte.app.Sunshine.yml")
+          manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+
+          kde_platform_version = str(manifest["runtime-version"])
+          node_extensions = [
+              (match.group(1), config)
+              for name, config in manifest["add-build-extensions"].items()
+              if (match := re.fullmatch(r"org\.freedesktop\.Sdk\.Extension\.node(\d+)", name))
+          ]
+          if len(node_extensions) != 1:
+              raise ValueError(f"Expected one Node SDK extension, found {len(node_extensions)}")
+
+          node_version, node_extension = node_extensions[0]
+          freedesktop_sdk_version = str(node_extension["version"])
+          version_pattern = re.compile(r"\d+(?:\.\d+)*")
+          versions = {
+              "FREEDESKTOP_SDK_VERSION": freedesktop_sdk_version,
+              "KDE_PLATFORM_VERSION": kde_platform_version,
+              "NODE_VERSION": node_version,
+          }
+          for name, version in versions.items():
+              if not version_pattern.fullmatch(version):
+                  raise ValueError(f"Invalid {name}: {version!r}")
+
+          with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as github_env:
+              for name, version in versions.items():
+                  print(f"{name}={version}", file=github_env)
+          PY
 
       - name: Setup Dependencies Linux Flatpak
         run: |
@@ -88,7 +128,7 @@ jobs:
 
       - name: flatpak node generator
         # https://github.com/flatpak/flatpak-builder-tools/blob/master/node/README.md
-        run: uv run --locked --no-sync python -m flatpak_node_generator npm package-lock.json
+        run: uv run --locked --no-build --no-sync python -m flatpak_node_generator npm package-lock.json
 
       - name: Debug generated-sources.json
         run: cat generated-sources.json
@@ -105,7 +145,7 @@ jobs:
             --no-header \
             --output-file glad-requirements.txt
 
-          uv run --locked --no-sync python \
+          uv run --locked --no-build --no-sync python \
             ./packaging/linux/flatpak/deps/flatpak-builder-tools/pip/flatpak-pip-generator.py \
             --runtime="org.kde.Sdk//${KDE_PLATFORM_VERSION}" \
             --output glad-dependencies \

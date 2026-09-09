@@ -175,7 +175,7 @@ namespace confighttp {
    */
   constexpr auto CSRF_TOKEN_LIFETIME = std::chrono::hours(1);  // Tokens valid for 1 hour
 
-  constexpr auto LIBVIRTUALHID_MINIMUM_VERSION = "2026.829.2338.54"sv;  ///< Minimum supported libvirtualhid driver version.  // NOSONAR(cpp:S1313): not an IP address
+  constexpr std::string_view libvirtualhid_minimum_version = LIBVIRTUALHID_MINIMUM_VERSION;  ///< Minimum supported libvirtualhid driver version.
   constexpr auto VIGEMBUS_MINIMUM_VERSION = "1.17.0.0"sv;  ///< Minimum supported ViGEmBus fallback driver version.  // NOSONAR(cpp:S1313): not an IP address
 
   /**
@@ -231,8 +231,13 @@ namespace confighttp {
     return parts;
   }
 
+  bool is_driver_version_development(std::string_view version) {
+    const auto version_parts = parse_driver_version(version);
+    return version_parts && version_parts->size() >= 3U && (*version_parts)[0] == 0U && (*version_parts)[1] == 0U;
+  }
+
   bool is_driver_version_supported(std::string_view version, std::string_view minimum_version) {
-    if (minimum_version.empty()) {
+    if (minimum_version.empty() || is_driver_version_development(version)) {
       return true;
     }
 
@@ -240,10 +245,6 @@ namespace confighttp {
     const auto minimum_parts = parse_driver_version(minimum_version);
     if (!version_parts || !minimum_parts) {
       return false;
-    }
-
-    if (version_parts->size() >= 3U && (*version_parts)[0] == 0U && (*version_parts)[1] == 0U && (*version_parts)[2] == 0U) {
-      return true;
     }
 
     const auto part_count = std::max(version_parts->size(), minimum_parts->size());
@@ -266,6 +267,7 @@ namespace confighttp {
     output_tree["version"] = version;
     output_tree["minimum_version"] = minimum_version_text;
     output_tree["supported_versions"] = minimum_version.empty() ? "Any" : std::format(">= {}", minimum_version_text);
+    output_tree["development_version"] = installed && is_driver_version_development(version);
     output_tree["version_compatible"] = installed && is_driver_version_supported(version, minimum_version);
 
     return output_tree;
@@ -1705,18 +1707,86 @@ namespace confighttp {
   }
 
   /**
-   * @brief Send a pin code to the host. The pin is generated from the Moonlight client during the pairing process.
-   * @param response The HTTP response object.
-   * @param request The HTTP request object.
+   * @brief List client pairing requests that are waiting for PIN approval.
+   *
+   * @api_examples{/api/pin| GET| null}
+   */
+  void getPendingPairings(const resp_https_t &response, const req_https_t &request) {
+    if (!authenticate(response, request)) {
+      return;
+    }
+
+    print_req(request);
+
+    nlohmann::json output_tree;
+    output_tree["pairings"] = nlohmann::json::array();
+    for (const auto &pairing : nvhttp::get_pending_pairings()) {
+      output_tree["pairings"].push_back({
+        {"id", pairing.id},
+        {"name", pairing.name},
+        {"address", pairing.address},
+      });
+    }
+    send_response(response, output_tree);
+  }
+
+  /**
+   * @brief Cancel a client pairing request that is waiting for PIN approval.
+   * The body for the delete request should be JSON serialized in the following format:
+   * @code{.json}
+   * {
+   *   "pairing_id": "<pairing_id>"
+   * }
+   * @endcode
+   *
+   * @api_examples{/api/pin| DELETE| {"pairing_id":"0123456789abcdef0123456789abcdef"}}
+   */
+  void cancelPairing(const resp_https_t &response, const req_https_t &request) {
+    if (!check_content_type(response, request, "application/json")) {
+      return;
+    }
+    if (!authenticate(response, request)) {
+      return;
+    }
+
+    const std::string client_id = get_client_id(request);
+    if (!validate_csrf_token(response, request, client_id)) {
+      return;
+    }
+
+    print_req(request);
+
+    std::stringstream ss;
+    ss << request->content.rdbuf();
+    try {
+      const nlohmann::json input_tree = nlohmann::json::parse(ss);
+      const std::string pairing_id = input_tree.value("pairing_id", "");
+      if (!nvhttp::is_valid_pairing_id(pairing_id)) {
+        bad_request(response, request, "pairing_id must contain exactly 32 hexadecimal characters");
+        return;
+      }
+
+      nlohmann::json output_tree;
+      output_tree["status"] = nvhttp::cancel_pairing(pairing_id);
+      send_response(response, output_tree);
+    } catch (nlohmann::json::exception &e) {
+      BOOST_LOG(warning) << "CancelPairing: "sv << e.what();
+      bad_request(response, request, e.what());
+    }
+  }
+
+  /**
+   * @brief Send a PIN code to the explicitly selected pairing request.
    * The body for the post request should be JSON serialized in the following format:
    * @code{.json}
    * {
+   *   "pairing_id": "<pairing_id>",
    *   "pin": "<pin>",
    *   "name": "Friendly Client Name"
    * }
    * @endcode
    *
-   * @api_examples{/api/pin| POST| {"pin":"1234","name":"My PC"}}
+   * @api_examples{/api/pin| POST| {"pairing_id":"0123456789abcdef0123456789abcdef","pin":"1234","name":"My PC"}}
    */
   void savePin(const resp_https_t &response, const req_https_t &request) {
     if (!check_content_type(response, request, "application/json")) {
@@ -1739,15 +1809,22 @@ namespace confighttp {
       nlohmann::json output_tree;
       nlohmann::json input_tree = nlohmann::json::parse(ss);
       const std::string name = input_tree.value("name", "");
+      const std::string pairing_id = input_tree.value("pairing_id", "");
       const std::string pin = input_tree.value("pin", "");
-
-      int _pin = 0;
-      _pin = std::stoi(pin);
-      if (_pin < 0 || _pin > 9999) {
-        bad_request(response, request, "PIN must be between 0000 and 9999");
+      if (!nvhttp::is_valid_pairing_id(pairing_id)) {
+        bad_request(response, request, "pairing_id must contain exactly 32 hexadecimal characters");
+        return;
+      }
+      if (!nvhttp::is_valid_pairing_pin(pin)) {
+        bad_request(response, request, "PIN must contain exactly 4 numeric digits");
+        return;
+      }
+      if (!nvhttp::is_valid_pairing_name(name)) {
+        bad_request(response, request, "Client name must contain between 1 and 128 bytes");
+        return;
       }
 
-      output_tree["status"] = nvhttp::pin(pin, name);
+      output_tree["status"] = nvhttp::pin(pairing_id, pin, name);
       send_response(response, output_tree);
     } catch (std::exception &e) {
       BOOST_LOG(warning) << "SavePin: "sv << e.what();
@@ -1812,7 +1889,7 @@ namespace confighttp {
 #ifdef _WIN32
     const auto version_str = read_libvirtualhid_driver_version();
     const auto driver_detected = !version_str.empty();
-    auto output_tree = build_driver_status(driver_detected, version_str, LIBVIRTUALHID_MINIMUM_VERSION);
+    auto output_tree = build_driver_status(driver_detected, version_str, libvirtualhid_minimum_version);
     bool requires_installed_driver = true;
     std::string backend_name;
     std::string runtime_error_message;
@@ -1823,7 +1900,7 @@ namespace confighttp {
         const auto &capabilities = runtime->capabilities();
         backend_name = capabilities.backend_name;
         requires_installed_driver = capabilities.requires_installed_driver;
-        output_tree = build_driver_status(driver_detected || capabilities.supports_gamepad, version_str, LIBVIRTUALHID_MINIMUM_VERSION);
+        output_tree = build_driver_status(driver_detected || capabilities.supports_gamepad, version_str, libvirtualhid_minimum_version);
       }
     } catch (const std::bad_alloc &exception) {
       runtime_error_message = exception.what();
@@ -1835,7 +1912,7 @@ namespace confighttp {
       output_tree["error"] = runtime_error_message;
     }
 #else
-    auto output_tree = build_driver_status(false, "", LIBVIRTUALHID_MINIMUM_VERSION);
+    auto output_tree = build_driver_status(false, "", libvirtualhid_minimum_version);
     output_tree["error"] = "libvirtualhid driver status is only available on Windows";
     output_tree["backend_name"] = "";
     output_tree["requires_installed_driver"] = false;
@@ -1954,6 +2031,9 @@ namespace confighttp {
         return;
       }
 
+#ifdef _WIN32
+      config::select_all_gamepad_drivers_if_licensed(result.license.licensed());
+#endif
 #if defined(_WIN32) && defined(SUNSHINE_TRAY) && SUNSHINE_TRAY >= 1
       system_tray::update_tray_virtualhid_license(result.license, false);
 #endif
@@ -2218,6 +2298,8 @@ namespace confighttp {
     server.resource["^/api/covers/upload$"]["POST"] = uploadCover;
     server.resource["^/api/csrf-token$"]["GET"] = getCSRFToken;
     server.resource["^/api/password$"]["POST"] = savePassword;
+    server.resource["^/api/pin$"]["DELETE"] = cancelPairing;
+    server.resource["^/api/pin$"]["GET"] = getPendingPairings;
     server.resource["^/api/pin$"]["POST"] = savePin;
     server.resource["^/api/logs$"]["GET"] = getLogs;
     server.resource["^/api/reset-display-device-persistence$"]["POST"] = resetDisplayDevicePersistence;
