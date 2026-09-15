@@ -57,12 +57,20 @@ available for manual download from each GitHub release.
 
 **CUDA Compatibility**
 
-CUDA is used for NVFBC capture.
+CUDA is used for NVFBC capture and direct GPU-memory NVENC encoding.
+
+> [!IMPORTANT]
+> CUDA support is selected when Sunshine is compiled. If you build Sunshine for an NVIDIA GPU yourself, including
+> through the AUR or for a third-party repository such as Omarchy, install the CUDA Toolkit before building Sunshine.
+> Installing CUDA after Sunshine has been compiled does not add CUDA support; Sunshine must be rebuilt.
+>
+> This requirement does not apply when installing a prebuilt package supplied by LizardByte. In particular, the
+> Arch Linux package from LizardByte's [pacman-repo](https://github.com/LizardByte/pacman-repo) is already built with
+> CUDA support, so its users do not need to install the CUDA Toolkit.
 
 > [!NOTE]
 > See [CUDA GPUS](https://developer.nvidia.com/cuda-gpus) to cross-reference Compute Capability to your GPU.
-> The table below applies to packages provided by LizardByte. If you use an official LizardByte package, then you do not
-> need to install CUDA.
+> The table below applies to packages provided by LizardByte.
 
 <table>
     <caption>CUDA Compatibility</caption>
@@ -91,6 +99,27 @@ CUDA is used for NVFBC capture.
         <td>sunshine.pkg.tar.zst</td>
     </tr>
 </table>
+
+#### Alpine Linux
+
+> [!IMPORTANT]
+> The Alpine package is dynamically linked against Alpine 3.24 libraries. CUDA and NVFBC capture are not available in
+> this package, but the other capture and encoding backends supported by the system remain enabled.
+
+##### Install
+
+1. Download `sunshine_{version}_alpine{distro-version}_{arch}.apk` from the [latest release][latest-release].
+2. Install the package as root. Release APKs use a per-build signing key, so explicitly allow the downloaded package.
+
+   ```sh
+   apk add --allow-untrusted ./sunshine_{version}_alpine{distro-version}_{arch}.apk
+   ```
+
+##### Uninstall
+
+```sh
+apk del sunshine
+```
 
 #### AppImage
 
@@ -127,6 +156,11 @@ CUDA is used for NVFBC capture.
 
 > [!CAUTION]
 > Use AUR packages at your own risk.
+
+> [!IMPORTANT]
+> NVIDIA users installing Sunshine from LizardByte's pacman-repo do not need the CUDA Toolkit. If Sunshine is compiled
+> locally from the AUR or by another package provider, such as Omarchy, the builder must install the CUDA Toolkit before
+> compilation. Installing CUDA after the package was built cannot enable CUDA support in that package.
 
 ##### Install Prebuilt Packages
 Follow the instructions at LizardByte's [pacman-repo](https://github.com/LizardByte/pacman-repo) to add
@@ -181,7 +215,7 @@ sudo apt install sunshine
 
 Download `sunshine_{version}-1+{distro}{distro-version}_{arch}.deb` and run the following command.
 ```bash
-sudo dpkg -i ./sunshine_{version}-1+{distro}{distro-version}_{arch}.deb
+sudo apt install ./sunshine_{version}-1+{distro}{distro-version}_{arch}.deb
 ```
 
 > [!NOTE]
@@ -539,7 +573,7 @@ Sunshine supports two virtual gamepad backends on Windows. You can install the
 for a driver-backed Raw Input keyboard and mouse plus full virtual gamepad support. ViGEmBus remains available as a
 limited alternative for Xbox 360 and DualShock 4 gamepads, but it has reached end of life.
 
-When Virtual HID Driver is used, Sunshine requires version `2026.905.2300.20` or newer.
+When Virtual HID Driver is used, Sunshine requires version `2026.914.1218.10` or newer.
 
 Compared with the ViGEmBus fallback, Virtual HID Driver can create Xbox One, Xbox Series, DualSense, Nintendo Switch
 Pro, and Generic gamepads in addition to Xbox 360 and DualShock 4. It can also expose controller-specific features such
@@ -693,7 +727,6 @@ All shortcuts start with `Ctrl+Alt+Shift`, just like Moonlight.
 * The "Desktop" app works the same as any other application except it has no commands. It does not start an application,
   instead it simply starts a stream. If you removed it and would like to get it back, just add a new application with
   the name "Desktop" and "desktop.png" as the image path.
-* For the Linux flatpak you must prepend commands with `flatpak-spawn --host`.
 * If inputs (mouse, keyboard, gamepads...) aren't working after connecting:
 
   * On FreeBSD/Linux, add the user running sunshine to the `input` group.

@@ -38,7 +38,7 @@ jobs:
 
       - name: Release Setup
         id: release-setup
-        uses: LizardByte/actions/actions/release_setup@188c8ccad593e0f68bcf6aacb6bf84f10359d26f  # v2026.905.43751
+        uses: LizardByte/actions/actions/release_setup@39c468549cfb87ccb917e5e5342e18abc926dc48  # v2026.909.30231
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -129,6 +129,16 @@ jobs:
       release_commit: ${{ needs.release-setup.outputs.release_commit }}
       release_version: ${{ needs.release-setup.outputs.release_version }}
 
+  build-alpine:
+    name: Alpine
+    needs: release-setup
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-alpine.yml
+    with:
+      release_commit: ${{ needs.release-setup.outputs.release_commit }}
+      release_version: ${{ needs.release-setup.outputs.release_version }}
+
   build-linux-copr:
     name: Linux Copr
     if: github.event_name != 'push'  # releases are handled directly in ci-release.yml
@@ -170,6 +180,12 @@ jobs:
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
+  test-powershell:
+    name: PowerShell
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-powershell.yml
+
   bundle-analysis:
     name: Bundle Analysis
     needs: release-setup
@@ -189,10 +205,12 @@ jobs:
       - build-freebsd
       - build-linux
       - build-archlinux
+      - build-alpine
       - build-linux-flatpak
       - build-macos
       - build-homebrew
       - build-windows
+      - test-powershell
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -208,13 +226,14 @@ jobs:
             coverage: true
           - name: Archlinux
             coverage: true
+          - name: Alpine-x86_64
+            coverage: true
+          - name: Alpine-aarch64
+            coverage: true
           - name: macOS-arm64
             coverage: true
           - name: macOS-x86_64
             coverage: true
-          - name: Homebrew-macos-14
-            coverage: true
-            coverage_file: coverage.lcov
           - name: Homebrew-macos-15
             coverage: true
             coverage_file: coverage.lcov
@@ -226,6 +245,8 @@ jobs:
           - name: Windows-AMD64
             coverage: true
           - name: Windows-ARM64
+            coverage: true
+          - name: PowerShell
             coverage: true
     steps:
       - name: Checkout
@@ -239,7 +260,7 @@ jobs:
 
       - name: Upload test coverage
         if: matrix.coverage != false
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
+        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4  # v7.1.0
         with:
           disable_search: true
           fail_ci_if_error: true
@@ -250,7 +271,7 @@ jobs:
           verbose: true
 
       - name: Upload test results
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
+        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4  # v7.1.0
         with:
           disable_search: true
           fail_ci_if_error: true
@@ -268,6 +289,7 @@ jobs:
     needs:
       - release-setup
       - build-archlinux
+      - build-alpine
       - build-docker
       - build-freebsd
       - build-homebrew
@@ -290,7 +312,7 @@ jobs:
         run: ls -l artifacts
 
       - name: Create/Update GitHub Release
-        uses: LizardByte/actions/actions/release_create@188c8ccad593e0f68bcf6aacb6bf84f10359d26f  # v2026.905.43751
+        uses: LizardByte/actions/actions/release_create@39c468549cfb87ccb917e5e5342e18abc926dc48  # v2026.909.30231
         with:
           allowUpdates: false
           body: ${{ needs.release-setup.outputs.release_body }}
