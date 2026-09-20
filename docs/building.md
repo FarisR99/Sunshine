@@ -14,6 +14,20 @@ It is recommended to use one of the following compilers:
 
 ### Dependencies
 
+Boost `1.89.0` or newer can be supplied as a system package. When a compatible system package is unavailable, CMake
+downloads the project-locked Boost release through CPM. Static Boost libraries are preferred on every platform by
+default; pass `-DBOOST_USE_STATIC=OFF` to use shared system libraries instead.
+
+Sunshine's build and packaging automation uses packaged static Boost libraries on Arch Linux, Fedora 44 or newer,
+Ubuntu 26.04 or newer, macOS with Homebrew, Windows with MSYS2, and FreeBSD. Older supported distributions continue
+to use the CPM fallback because their repositories do not meet the minimum Boost version.
+
+#### Prebuilt Web UI
+
+Sunshine releases publish the platform-independent Web UI as the `@lizardbyte/sunshine` package to npm and GitHub
+Packages. The package contains the production assets under `build/assets/web`, so downstream packagers can install the
+Web UI without running Node.js or Vite during the native Sunshine build.
+
 #### FreeBSD
 > [!CAUTION]
 > Sunshine support for FreeBSD is experimental and may be incomplete or not work as expected
