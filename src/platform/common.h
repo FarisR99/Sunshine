@@ -390,6 +390,8 @@ namespace platf {
     int height;  ///< Frame or display height in pixels.
     int logical_width;  ///< Logical width after display scaling.
     int logical_height;  ///< Logical height after display scaling.
+    int env_offset_x {};  ///< Horizontal origin of the full input environment in native desktop coordinates.
+    int env_offset_y {};  ///< Vertical origin of the full input environment in native desktop coordinates.
   };
 
   // These values must match Limelight-internal.h's SS_FF_* constants!
@@ -786,6 +788,8 @@ namespace platf {
     // Offsets for when streaming a specific monitor. By default, they are 0.
     int offset_x {0};  ///< Horizontal capture offset in physical pixels.
     int offset_y {0};  ///< Vertical capture offset in physical pixels.
+    int env_offset_x {0};  ///< Horizontal origin of the full capture environment in native desktop coordinates.
+    int env_offset_y {0};  ///< Vertical origin of the full capture environment in native desktop coordinates.
     int env_width {0};  ///< Width of the full capture environment in physical pixels.
     int env_height {0};  ///< Height of the full capture environment in physical pixels.
     int env_logical_width {0};  ///< Width of the full capture environment after display scaling.
@@ -909,6 +913,8 @@ namespace platf {
 
   std::filesystem::path appdata();
 
+  std::filesystem::path get_xdg_restore_token_path();  ///< XDG restore token path.
+
   /**
    * @brief Return the hardware MAC address associated with a network address.
    *
@@ -921,14 +927,14 @@ namespace platf {
    * @brief Convert a socket address to a printable IP address.
    *
    * @param ip_addr Socket address to format.
-   * @return Value converted from sockaddr.
+   * @return Printable address, or an empty string for an unsupported address family.
    */
   std::string from_sockaddr(const sockaddr *const);
   /**
    * @brief Convert a socket address to a port and printable IP address.
    *
    * @param ip_addr Socket address to format.
-   * @return Value converted from sockaddr ex.
+   * @return Port in network byte order and printable address, or zero and an empty string for an unsupported family.
    */
   std::pair<std::uint16_t, std::string> from_sockaddr_ex(const sockaddr *const);
 
@@ -1183,6 +1189,15 @@ namespace platf {
    * @param deltaY Delta y.
    */
   void move_mouse(input_t &input, int deltaX, int deltaY);
+  /**
+   * @brief Retarget the virtual mouse and move it relatively.
+   *
+   * @param input Platform input backend that receives the event.
+   * @param touch_port Desktop and streamed-display bounds for the pointer.
+   * @param deltaX Delta x.
+   * @param deltaY Delta y.
+   */
+  void move_mouse(input_t &input, const touch_port_t &touch_port, int deltaX, int deltaY);
   /**
    * @brief Move the pointer to an absolute client-provided touch coordinate.
    *
